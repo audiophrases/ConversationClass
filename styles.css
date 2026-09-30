@@ -238,6 +238,8 @@ textarea { resize: vertical; }
 .chip:active { transform: scale(0.95); }
 .chip.S { background: var(--S-bg); color: var(--S); border-color: color-mix(in srgb, var(--S) 35%, transparent); }
 .chip.C { background: var(--C-bg); color: var(--C); border-color: color-mix(in srgb, var(--C) 35%, transparent); }
+.chip.N { background: var(--bg); color: var(--ink); border-color: var(--line); }
+.chip .mark { font-weight: 800; }
 .chip.A { background: transparent; color: var(--A); border-color: var(--line); text-decoration: line-through; }
 .chip-x {
   border: none;
@@ -491,8 +493,6 @@ pre {
 }
 .gnames { display: flex; flex-direction: column; min-width: 0; }
 .gnames .nm { font-size: clamp(1.1rem, 2vw, 2.6rem); font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
-.nm::before { content: ""; display: inline-block; width: 0.45em; height: 0.45em; border-radius: 50%; margin-right: 0.35em; vertical-align: 0.15em; background: var(--S); }
-.nm.C::before { background: var(--C); }
 
 /* talk phase */
 .task-head { text-align: center; margin-bottom: clamp(0.5rem, 1.5vh, 1.5rem); }
@@ -578,7 +578,6 @@ pre {
   font-size: 0.85em;
 }
 .gchip i { color: var(--muted); font-style: normal; }
-.gchip .nm::before { width: 0.4em; height: 0.4em; margin-right: 0.2em; }
 
 /* note, report, end */
 .center-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 0.6rem; }

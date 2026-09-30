@@ -28,30 +28,79 @@
     return sizes;
   }
 
-  // Random groups that avoid previous partners: try many shuffles, keep the one
-  // with the fewest repeated pairings (history maps pairKey -> times together).
-  function makeGroups(ids, size, history = {}, tries = 300, rand = Math.random) {
+  // Cost of one group: repeated partners (history maps pairKey -> times together,
+  // squared so repeats of repeats hurt more) plus a huge penalty for every
+  // Support+Support pairing, so that only happens when it can't be avoided.
+  const SUPPORT_PAIR_COST = 1e6;
+  function groupCost(g, history, isSupport) {
+    let cost = 0;
+    for (let i = 0; i < g.length; i += 1) {
+      for (let j = i + 1; j < g.length; j += 1) {
+        const c = history[pairKey(g[i], g[j])] || 0;
+        cost += c * c;
+        if (isSupport(g[i]) && isSupport(g[j])) cost += SUPPORT_PAIR_COST;
+      }
+    }
+    return cost;
+  }
+
+  // Random groups that keep Support students apart and avoid previous partners.
+  // Each try deals Support students out one per group (so they only double up
+  // when there are more of them than groups), fills the rest at random, then
+  // swaps students between groups while that lowers the cost. Best try wins.
+  // levels maps id -> 'S' (Support) | 'C' (Challenge) | anything else (neutral).
+  function makeGroups(ids, size, history = {}, levels = {}, tries = 40, rand = Math.random) {
     const sizes = groupSizes(ids.length, size);
+    if (!sizes.length) return [];
+    const isSupport = (id) => levels[id] === 'S';
     let best = null;
     let bestScore = Infinity;
     for (let t = 0; t < tries; t += 1) {
-      const order = shuffle(ids, rand);
-      const groups = [];
+      const groups = sizes.map(() => []);
+      const supports = shuffle(ids.filter(isSupport), rand);
+      const others = shuffle(ids.filter((id) => !isSupport(id)), rand);
+      const order = shuffle(sizes.map((_, i) => i), rand);
       let k = 0;
-      sizes.forEach((s) => { groups.push(order.slice(k, k + s)); k += s; });
-      let score = 0;
-      groups.forEach((g) => {
-        for (let i = 0; i < g.length; i += 1) {
-          for (let j = i + 1; j < g.length; j += 1) {
-            const c = history[pairKey(g[i], g[j])] || 0;
-            score += c * c; // punish repeats of repeats harder
+      supports.forEach((id) => {
+        while (groups[order[k % order.length]].length >= sizes[order[k % order.length]]) k += 1;
+        groups[order[k % order.length]].push(id);
+        k += 1;
+      });
+      let gi = 0;
+      others.forEach((id) => {
+        while (groups[gi].length >= sizes[gi]) gi += 1;
+        groups[gi].push(id);
+      });
+
+      const costs = groups.map((g) => groupCost(g, history, isSupport));
+      let improved = true;
+      while (improved) {
+        improved = false;
+        for (let a = 0; a < groups.length; a += 1) {
+          for (let b = a + 1; b < groups.length; b += 1) {
+            for (let i = 0; i < groups[a].length; i += 1) {
+              for (let j = 0; j < groups[b].length; j += 1) {
+                const x = groups[a][i];
+                const y = groups[b][j];
+                groups[a][i] = y; groups[b][j] = x;
+                const ca = groupCost(groups[a], history, isSupport);
+                const cb = groupCost(groups[b], history, isSupport);
+                if (ca + cb < costs[a] + costs[b]) {
+                  costs[a] = ca; costs[b] = cb; improved = true;
+                } else {
+                  groups[a][i] = x; groups[b][j] = y;
+                }
+              }
+            }
           }
         }
-      });
-      if (score < bestScore) { best = groups; bestScore = score; }
+      }
+
+      const score = costs.reduce((sum, c) => sum + c, 0);
+      if (score < bestScore) { best = groups.map((g) => shuffle(g, rand)); bestScore = score; }
       if (score === 0) break;
     }
-    return best || [];
+    return shuffle(best, rand);
   }
 
   function recordGroups(history, groups) {

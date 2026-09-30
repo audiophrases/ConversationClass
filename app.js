@@ -36,8 +36,12 @@ let wakeLock = null;
 function loadDb() {
   let data = {};
   try { data = JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { data = {}; }
+  const classes = Array.isArray(data.classes) ? data.classes : [];
+  // v1 had only Support ('S', the default) and Challenge: unmarked students become neutral.
+  if (!data.version) classes.forEach((c) => (c.students || []).forEach((st) => { if (st.level !== 'C') st.level = 'N'; }));
   return {
-    classes: Array.isArray(data.classes) ? data.classes : [],
+    version: 2,
+    classes,
     sessions: Array.isArray(data.sessions) ? data.sessions : [],
     imageCache: data.imageCache && typeof data.imageCache === 'object' ? data.imageCache : {},
     settings: { ...DEFAULT_SETTINGS, ...(data.settings || {}) },
@@ -86,8 +90,11 @@ function nameOf(id) {
 function levelOf(id) {
   const cls = liveClass() || ensureClass();
   const st = cls.students.find((s) => s.id === id);
-  return st ? st.level : 'S';
+  return st ? st.level : 'N';
 }
+
+const LEVEL_NAMES = { S: 'Support', C: 'Challenge', N: 'No level' };
+const LEVEL_MARKS = { S: '+', C: '★', N: '' };
 
 function imageCandidates(round) {
   const list = [round.image, ...(db.imageCache[round.imageQuery] || [])].filter(Boolean);
@@ -201,9 +208,10 @@ function render() {
 
 function studentChip(s) {
   const state = s.absent ? 'A' : s.level;
-  const title = s.absent ? 'Absent' : (s.level === 'C' ? 'Challenge' : 'Support');
+  const title = s.absent ? 'Absent' : LEVEL_NAMES[s.level];
+  const mark = s.absent ? '' : LEVEL_MARKS[s.level];
   return `<span class="chip ${state}" data-action="cycleStudent" data-id="${s.id}" title="${title}: tap to change" role="button" tabindex="0">
-    <span class="dot"></span>${esc(s.name)}<button class="chip-x" data-action="removeStudent" data-id="${s.id}" title="Remove ${esc(s.name)}" aria-label="Remove">×</button></span>`;
+    ${mark ? `<span class="mark">${mark}</span>` : ''}${esc(s.name)}<button class="chip-x" data-action="removeStudent" data-id="${s.id}" title="Remove ${esc(s.name)}" aria-label="Remove">×</button></span>`;
 }
 
 function roundRow(r, i) {
@@ -224,13 +232,13 @@ function renderSetup() {
   const s = db.settings;
   const present = cls.students.filter((st) => !st.absent);
   const nC = present.filter((st) => st.level === 'C').length;
-  const nS = present.length - nC;
+  const nS = present.filter((st) => st.level === 'S').length;
   const live = db.live;
 
   $('#app').innerHTML = `
   <div class="setup">
     <header class="brand">
-      <div class="logo">🗣️ Talk Rounds</div>
+      <div class="logo">🗣️ Conversation Class</div>
       <button class="btn ghost small" data-action="toggleTheme">${s.theme === 'dark' ? '☀️ Light' : '🌙 Dark'}</button>
     </header>
 
@@ -251,10 +259,10 @@ function renderSetup() {
           <button class="btn ghost small" data-action="renameClass" title="Rename class">✏️</button>
           <button class="btn ghost small" data-action="deleteClass" title="Delete class">🗑️</button>
         </div>
-        <p class="legend">Tap a name: <span class="dot S"></span> Support → <span class="dot C"></span> Challenge → <span class="dot A"></span> Absent</p>
+        <p class="legend">Tap a name: no mark → <b class="c-S">+</b> Support → <b class="c-C">★</b> Challenge → Absent. Only you see these; Support students are kept apart when pairing.</p>
         <div class="chips">${cls.students.map(studentChip).join('') || '<p class="empty">No students yet. Paste your list below 👇</p>'}</div>
         ${cls.students.length ? `<p class="stats"><b>${present.length}</b> present · <span class="c-S">${nS} support</span> · <span class="c-C">${nC} challenge</span></p>` : ''}
-        <textarea id="namesInput" rows="3" placeholder="Paste names, one per line.&#10;Add * for Challenge level: Maria*"></textarea>
+        <textarea id="namesInput" rows="3" placeholder="Paste names, one per line.&#10;Add * for Challenge (Maria*), + for Support (Leo+)"></textarea>
         <div class="row wrap">
           <button class="btn" data-action="addNames">➕ Add names</button>
           <button class="btn ghost small" data-action="allPresent">Everyone present</button>
@@ -317,7 +325,7 @@ function timerRemaining() {
 }
 
 function nameSpan(id) {
-  return `<span class="nm ${levelOf(id)}">${esc(nameOf(id))}</span>`;
+  return `<span class="nm">${esc(nameOf(id))}</span>`;
 }
 
 function groupStrip(groups) {
@@ -501,7 +509,9 @@ function sizeForRound(i) {
 
 function buildGroups() {
   const L = db.live;
-  L.groups = Logic.makeGroups(presentIds(), L.groupSize, liveClass().history || {});
+  const ids = presentIds();
+  const levels = Object.fromEntries(ids.map((id) => [id, levelOf(id)]));
+  L.groups = Logic.makeGroups(ids, L.groupSize, liveClass().history || {}, levels);
 }
 
 function prepareRound() {
@@ -898,8 +908,9 @@ const actions = {
     const cls = ensureClass();
     const st = cls.students.find((s) => s.id === el.dataset.id);
     if (!st) return;
-    if (st.absent) { st.absent = false; st.level = 'S'; } else if (st.level === 'S') st.level = 'C';
-    else st.absent = true;
+    if (st.absent) { st.absent = false; st.level = 'N'; } else if (st.level === 'S') st.level = 'C';
+    else if (st.level === 'C') st.absent = true;
+    else st.level = 'S';
     save(); render();
   },
   removeStudent(el) {
@@ -912,9 +923,10 @@ const actions = {
     const names = $('#namesInput').value.split(/[\n,;]+/).map((n) => n.trim()).filter(Boolean);
     if (!names.length) { toast('Type or paste some names first.'); return; }
     names.forEach((raw) => {
-      const challenge = /\*$/.test(raw);
-      const name = raw.replace(/\*+$/, '').trim();
-      if (name) cls.students.push({ id: uid(), name, level: challenge ? 'C' : 'S', absent: false });
+      const mark = (raw.match(/[*+★]+$/) || [''])[0];
+      const name = raw.slice(0, raw.length - mark.length).trim();
+      const level = /[*★]/.test(mark) ? 'C' : (mark ? 'S' : 'N');
+      if (name) cls.students.push({ id: uid(), name, level, absent: false });
     });
     $('#namesInput').value = '';
     save(); render();

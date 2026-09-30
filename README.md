@@ -1,4 +1,4 @@
-# Talk Rounds
+# Conversation Class
 
 A projector-first speaking app for ESL conversation classes. One screen runs the room: it pairs students, shows the task at two levels, runs the timer, asks for a one-line notebook note and picks someone to report back. There are no student devices, no recording and no scoring.
 
@@ -10,7 +10,7 @@ Data (classes, sessions, the class in progress) is saved in the browser's `local
 
 ## Class flow
 
-1. **Class**: paste names (one per line, add `*` for Challenge level, e.g. `Maria*`). Tap a name to cycle **Support → Challenge → Absent**.
+1. **Class**: paste names (one per line; add `*` for Challenge, e.g. `Maria*`, or `+` for Support, e.g. `Leo+`; no mark = neutral). Tap a name to cycle **neutral → + Support → ★ Challenge → Absent**. Level marks are only shown on this setup screen, never on the projector.
 2. **Rounds**: pick a session (two starter packs are included), create one with AI, or import JSON.
 3. **Start**: set minutes per round (default 5), pairs / trios / mix, notebook time and sound.
 
@@ -18,14 +18,14 @@ Each round runs through these steps:
 
 | Step | Screen | Teacher controls |
 |---|---|---|
-| Groups | Numbered pairs/trios, names coloured by level | 🔀 Shuffle, Pairs/Trios, ±1 min, ▶ Start |
+| Groups | Numbered pairs/trios (names only, no level marks) | 🔀 Shuffle, Pairs/Trios, ±1 min, ▶ Start |
 | Talk | Task title, picture, **Support** and **Challenge** boxes, big timer, groups strip; a nudge pops up halfway ("Switch roles!", "Ask a follow-up question") | −1 / +1 min, Pause, ⏹ Stop round |
 | Notebook | One random one-line mission ("Write ONE thing your partner said") with a short countdown | Done → |
 | Report back | Name roll picks one student (fair rotation, never the same person twice in a row) and names their partner | 🎲 Someone else, Next round → |
 
 Keyboard: `Space` = main action (start / pause / next), `→` = skip ahead, `+` / `−` = minute, `F` = fullscreen.
 
-New groups avoid previous partners. The partner history is kept per class across lessons ("Reset partners" clears it). If the page is reloaded mid-class, a **Resume** banner appears.
+New groups keep Support students apart (two Support students only share a group when there are more of them than groups) and, within that rule, avoid previous partners. With an odd number of students there is one trio. The partner history is kept per class across lessons ("Reset partners" clears it). If the page is reloaded mid-class, a **Resume** banner appears.
 
 ## Round types
 

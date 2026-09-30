@@ -30,6 +30,34 @@ for (let r = 0; r < 8; r += 1) {
   L.recordGroups(history, groups);
 }
 
+// Support students never share a group while there are enough groups to split them
+const ssPairs = (groups, levels) => groups.reduce((n, grp) => {
+  const k = grp.filter((id) => levels[id] === 'S').length;
+  return n + (k * (k - 1)) / 2;
+}, 0);
+const mkLevels = (n, nS, nC = 0) => Object.fromEntries(ids(n).map((id, i) => [id, i < nS ? 'S' : (i < nS + nC ? 'C' : '')]));
+for (let trial = 0; trial < 50; trial += 1) {
+  // 21 students -> 10 groups (one trio); 10 Support fit one per group
+  const lv = mkLevels(21, 10, 4);
+  const grp = L.makeGroups(ids(21), 2, {}, lv);
+  assert.deepStrictEqual(grp.flat().sort(), ids(21).sort());
+  assert.strictEqual(ssPairs(grp, lv), 0, 'no Support+Support when avoidable');
+}
+// 12 Support among 20 students (10 pairs): exactly 2 unavoidable Support pairs
+assert.strictEqual(ssPairs(L.makeGroups(ids(20), 2, {}, mkLevels(20, 12)), mkLevels(20, 12)), 2);
+// 5 Support among 7 students (pair, pair, trio): best is SS, SS, S++ = 2 pairs
+assert.strictEqual(ssPairs(L.makeGroups(ids(7), 2, {}, mkLevels(7, 5)), mkLevels(7, 5)), 2);
+
+// Support rule + partner rotation together: 20 students, 8 Support, 8 rounds
+history = {};
+const lv20 = mkLevels(20, 8, 4);
+for (let r = 0; r < 8; r += 1) {
+  const groups = L.makeGroups(ids(20), 2, history, lv20);
+  assert.strictEqual(ssPairs(groups, lv20), 0, `Support pair in round ${r + 1}`);
+  groups.forEach(([a, b]) => assert.ok(!history[L.pairKey(a, b)], `repeat in round ${r + 1}`));
+  L.recordGroups(history, groups);
+}
+
 // reporter: fair rotation, never twice in a row
 const counts = {};
 let last = null;
