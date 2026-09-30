@@ -3,22 +3,23 @@
 // Every round works the same way: A (first name in the group) starts, and at
 // halfway a chime says "swap". `roles` are the A / B / C jobs shown on the
 // projector (role plays and debates use the round's own roles / options for A
-// and B). A and B trade jobs at the swap; C keeps theirs. `swaps: false` keeps
-// the jobs and shows the halfway message as the next step instead.
-// `supportSlots`: seats Support students take first (default B, then C, then A).
+// and B). A and B trade jobs at the swap; C keeps theirs, and in groups of four
+// D does the same job as C. `swaps: false` keeps the jobs and shows the halfway
+// message as the next step instead.
+// `supportSlots`: seats Support students take first (default B, C, D, then A).
 const ROUND_TYPES = {
   picture: {
     icon: '🖼️',
     name: 'Picture',
     roles: ['👀 Describe it', '🙈 Don\'t look! Ask questions', '🙈 Don\'t look! Ask questions'],
-    swap: '🔄 Swap!',
+    swap: '🔄 Swap! Check the picture, then change places',
   },
   topic: {
     icon: '💬',
     name: 'Topic talk',
     roles: ['🎤 Ask + “Why?”', '💬 Answer', '💬 Answer too'],
     swap: '🔄 Swap! No “me too” 😉',
-    supportSlots: [0, 2, 1], // asking first means hearing an answer before giving yours
+    supportSlots: [0, 2, 3, 1], // asking first means hearing an answer before giving yours
   },
   roleplay: {
     icon: '🎭',
@@ -90,6 +91,7 @@ const BUILT_IN_SESSIONS = [
       },
       {
         type: 'problem',
+        group: 4,
         title: 'Phone-free school trip',
         support: 'A 3-day school trip with NO phones! Choose 5 things to take with you. Say why.',
         challenge: 'No phones for 3 days: how will you contact family, find your way and have fun? Agree on a plan.',
@@ -105,6 +107,7 @@ const BUILT_IN_SESSIONS = [
       },
       {
         type: 'defend',
+        group: 3,
         title: 'City or countryside?',
         options: ['Live in a big city', 'Live in the countryside'],
         support: 'Defend your side. Give two reasons: "It\'s better because..."',
@@ -143,6 +146,7 @@ const BUILT_IN_SESSIONS = [
       },
       {
         type: 'defend',
+        group: 3,
         title: 'Bachillerato or FP?',
         options: ['Bachillerato', 'Vocational training (FP)'],
         support: 'Defend your side. Give two reasons.',
@@ -167,6 +171,7 @@ const BUILT_IN_SESSIONS = [
       },
       {
         type: 'problem',
+        group: 4,
         title: 'The careers fair',
         support: 'Your school has a careers fair. Choose 3 jobs to invite. Say why.',
         challenge: 'You organise the careers fair with a small budget. Choose 3 guests, plan activities and convince students to come.',

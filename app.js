@@ -3,8 +3,8 @@
 const STORE_KEY = 'talkRounds.v1';
 const COURSES = ['1º ESO', '2º ESO', '3º ESO', '4º ESO', '1º Bachillerato', '2º Bachillerato'];
 const GROUP_MODES = { pairs: 'Pairs', trios: 'Trios', mix: 'Mix' };
+const GROUP_NAMES = { 2: 'Pairs', 3: 'Trios', 4: 'Fours' };
 const NOTE_OPTIONS = [0, 30, 60, 90];
-const NEW_PICTURE_DELAY = 5000; // ms between the halfway swap and picture 2
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -21,7 +21,7 @@ const DEFAULT_SETTINGS = {
   noteSeconds: 60,
   sound: true,
   theme: 'light',
-  ai: { theme: '', course: '4º ESO', rounds: 7, types: Logic.TYPE_KEYS.slice(), note: '' },
+  ai: { theme: '', course: '4º ESO', rounds: 7, types: Logic.TYPE_KEYS.slice(), groups: [2, 3], note: '' },
 };
 
 let db = loadDb();
@@ -223,7 +223,7 @@ function roundRow(r, i) {
     : '';
   return `<li class="round-row t-${r.type}">
     <span class="rnum">${i + 1}</span><span class="ricon">${t.icon}</span>
-    <span class="rtext"><b>${esc(r.title)}</b><small>${t.name}</small></span>${thumb}</li>`;
+    <span class="rtext"><b>${esc(r.title)}</b><small>${t.name} · ${GROUP_NAMES[sizeForRound(r, i)]}</small></span>${thumb}</li>`;
 }
 
 function renderSetup() {
@@ -295,7 +295,7 @@ function renderSetup() {
             <button class="btn ghost" data-action="minutes" data-d="1" aria-label="More">+</button>
           </div>
         </div>
-        <div class="field"><span>Groups</span>
+        <div class="field"><span>Default groups</span>
           <div class="seg">${Object.entries(GROUP_MODES).map(([k, label]) => `<button class="${s.groupMode === k ? 'on' : ''}" data-action="groupMode" data-v="${k}">${label}</button>`).join('')}</div>
         </div>
         <div class="field"><span>Notebook note after each round</span>
@@ -325,9 +325,9 @@ function timerRemaining() {
   return t.endAt ? Math.max(0, t.endAt - Date.now()) : t.remaining;
 }
 
-// Seat letter: A (filled) starts, B and C follow. The same letters label the jobs.
+// Seat letter: A (filled) starts, B, C and D follow. The same letters label the jobs.
 function seat(i) {
-  return `<span class="seat${i ? '' : ' first'}">${'ABC'[i]}</span>`;
+  return `<span class="seat${i ? '' : ' first'}">${'ABCD'[i]}</span>`;
 }
 
 function nameSpan(id, i) {
@@ -338,16 +338,23 @@ function groupStrip(groups) {
   return `<footer class="group-strip">${groups.map((g, i) => `<span class="gchip"><b>${i + 1}</b>${g.map(nameSpan).join('')}</span>`).join('')}</footer>`;
 }
 
-// The A / B / C jobs for this round. A and B trade jobs at the halfway swap.
+// The A / B / C / D jobs for this round. A and B trade jobs at the halfway
+// swap; D does the same job as C.
 function roleChips(round, L) {
   const t = ROUND_TYPES[round.type] || ROUND_TYPES.topic;
   const own = (round.type === 'roleplay' && round.roles) || (round.type === 'defend' && round.options) || [];
-  const jobs = t.roles.map((job, i) => own[i] || job);
+  const jobs = [...t.roles, t.roles[2]].map((job, i) => own[i] || job);
   if (L.swapped && t.swaps !== false) [jobs[0], jobs[1]] = [jobs[1], jobs[0]];
   const chip = (i) => `<span class="role">${seat(i)}${esc(jobs[i])}</span>`;
-  const trio = L.groups.some((g) => g.length > 2);
-  return `<div class="extras">${chip(0)}${round.type === 'defend' ? '<span class="vs">vs</span>' : ''}${chip(1)}${trio ? chip(2) : ''}
+  const biggest = Math.max(...L.groups.map((g) => g.length));
+  const extra = [2, 3].filter((i) => i < biggest).map(chip).join('');
+  return `<div class="extras">${chip(0)}${round.type === 'defend' ? '<span class="vs">vs</span>' : ''}${chip(1)}${extra}
     ${L.swapped && t.swaps === false ? `<span class="role now">${esc(t.swap)}</span>` : ''}</div>`;
+}
+
+// "Ana", "Ana and Leo", "Ana, Leo and Sara"
+function listNames(parts) {
+  return parts.length < 3 ? parts.join(' and ') : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
 function talkMain(round, L) {
@@ -391,14 +398,14 @@ function renderLive() {
     timer = fmtTime(L.timer.remaining);
     controls = `
       <button class="btn ghost" data-action="shuffleGroups" title="New groups">🔀 Shuffle</button>
-      <span class="seg small"><button class="${L.groupSize === 2 ? 'on' : ''}" data-action="groupSize" data-v="2">Pairs</button><button class="${L.groupSize === 3 ? 'on' : ''}" data-action="groupSize" data-v="3">Trios</button></span>
+      <span class="seg small">${Object.entries(GROUP_NAMES).map(([n, label]) => `<button class="${L.groupSize === Number(n) ? 'on' : ''}" data-action="groupSize" data-v="${n}">${label}</button>`).join('')}</span>
       <button class="btn ghost" data-action="addMinute" data-d="-1" title="−1 minute (−)">−1</button>
       <button class="btn ghost" data-action="addMinute" data-d="1" title="+1 minute (+)">+1</button>
       <button class="btn primary" data-action="goTalk" title="Space">▶ Start</button>`;
     main = `
       <div class="groups-head">
         <div class="kicker">Round ${L.index + 1} of ${L.rounds.length} · ${type.icon} ${type.name}</div>
-        <h1>Find your ${L.groupSize === 3 ? 'group' : 'partner'}!</h1>
+        <h1>Find your ${L.groupSize > 2 ? 'group' : 'partner'}!</h1>
       </div>
       <div class="group-grid" style="--n:${L.groups.length}">
         ${L.groups.map((g, i) => `<div class="group-card"><span class="gnum">${i + 1}</span><div class="gnames">${g.map(nameSpan).join('')}</div></div>`).join('')}
@@ -407,6 +414,7 @@ function renderLive() {
     const paused = !L.timer.endAt;
     timer = fmtTime(timerRemaining());
     controls = `
+      ${L.pictureWaiting ? '<button class="btn primary" data-action="nextPicture" title="N">🖼️ Show next picture</button>' : ''}
       <button class="btn ghost" data-action="addMinute" data-d="-1" title="−1 minute (−)">−1</button>
       <button class="btn ghost" data-action="addMinute" data-d="1" title="+1 minute (+)">+1</button>
       <button class="btn ghost" data-action="togglePause" title="Space">${paused ? '▶ Resume' : '⏸ Pause'}</button>
@@ -431,7 +439,7 @@ function renderLive() {
     main = `<div class="center-stage report">
         <div class="kicker">🎤 Report back</div>
         <div class="reporter" id="reporterName">${esc(nameOf(L.reporter))}</div>
-        ${partners.length ? `<p class="report-sub">Tell the class what ${partners.join(' and ')} said.</p>` : ''}
+        ${partners.length ? `<p class="report-sub">Tell the class what ${listNames(partners)} said.</p>` : ''}
         ${L.mission ? `<p class="report-mission">📓 ${esc(L.mission)}</p>` : ''}
       </div>`;
   } else if (L.phase === 'end') {
@@ -477,11 +485,6 @@ function tick() {
     }
     if (fill) fill.style.width = `${Math.min(100, 100 - (rem / L.timer.total) * 100)}%`;
     if (!L.swapped && L.timer.endAt && rem <= L.timer.total / 2) swapHalfway();
-    if (L.newPictureAt) {
-      if (Date.now() >= L.newPictureAt) { showNextPicture(); return; } // re-renders, which ticks again
-      const nudge = $('#nudge');
-      if (nudge) nudge.textContent = pictureCountdown();
-    }
     if (rem <= 0) timeUp();
   } else if (L.phase === 'note') {
     const rem = L.noteEnd - Date.now();
@@ -504,32 +507,28 @@ function showNudge(text) {
 }
 
 // Halfway: A and B swap jobs (the chips on screen flip) and a chime says so.
-// Picture rounds then switch picture after a short countdown, so the partner
-// who couldn't look gets to see picture 1 before the new one appears.
+// In picture rounds picture 1 stays up so the partner who couldn't look can
+// check it; once students have changed places the teacher taps "Show next picture".
 function swapHalfway() {
   const L = db.live;
   const round = L.rounds[L.index];
   const list = round.type === 'picture' ? imageCandidates(round) : [];
   L.swapped = true;
   if (list.length > 1) {
-    L.newPictureAt = Date.now() + NEW_PICTURE_DELAY;
+    L.pictureWaiting = true;
     new Image().src = list[((round.imageIdx || 0) + 1) % list.length]; // preload
   }
   save();
   render();
-  showNudge(pictureCountdown() || (ROUND_TYPES[round.type] || ROUND_TYPES.topic).swap);
-}
-
-function pictureCountdown() {
-  const at = db.live.newPictureAt;
-  return at ? `🔄 Swap! New picture in ${Math.max(1, Math.ceil((at - Date.now()) / 1000))}…` : '';
+  showNudge((ROUND_TYPES[round.type] || ROUND_TYPES.topic).swap);
 }
 
 function showNextPicture() {
   const L = db.live;
+  if (!L.pictureWaiting) return;
   const round = L.rounds[L.index];
   round.imageIdx = (round.imageIdx || 0) + 1;
-  L.newPictureAt = null;
+  L.pictureWaiting = false;
   save();
   render();
 }
@@ -539,7 +538,9 @@ function presentIds() {
   return cls ? cls.students.filter((s) => !s.absent).map((s) => s.id) : [];
 }
 
-function sizeForRound(i) {
+// A round's own group size wins; otherwise the default from the Start panel.
+function sizeForRound(round, i) {
+  if (round && round.group) return round.group;
   const mode = db.settings.groupMode;
   if (mode === 'trios') return 3;
   if (mode === 'mix') return i % 2 ? 3 : 2;
@@ -558,9 +559,9 @@ function buildGroups() {
 function prepareRound() {
   const L = db.live;
   L.phase = 'groups';
-  L.groupSize = sizeForRound(L.index);
+  L.groupSize = sizeForRound(L.rounds[L.index], L.index);
   L.swapped = false;
-  L.newPictureAt = null;
+  L.pictureWaiting = false;
   L.reporter = null;
   L.mission = '';
   L.timer = { total: db.settings.minutes * 60000, remaining: db.settings.minutes * 60000, endAt: null };
@@ -760,7 +761,10 @@ function aiModalHtml() {
           <input id="aiRounds" type="number" min="1" max="12" value="${Number(ai.rounds) || 7}"></label>
       </div>
       <div class="field"><span>Round types</span>
-        <div class="type-picks">${Logic.TYPE_KEYS.map((t) => `<label class="type-pick"><input type="checkbox" value="${t}" ${ai.types.includes(t) ? 'checked' : ''}> ${ROUND_TYPES[t].icon} ${ROUND_TYPES[t].name}</label>`).join('')}</div>
+        <div class="type-picks" id="aiTypes">${Logic.TYPE_KEYS.map((t) => `<label class="type-pick"><input type="checkbox" value="${t}" ${ai.types.includes(t) ? 'checked' : ''}> ${ROUND_TYPES[t].icon} ${ROUND_TYPES[t].name}</label>`).join('')}</div>
+      </div>
+      <div class="field"><span>Group sizes the AI can use (it picks one per round)</span>
+        <div class="type-picks" id="aiGroups">${Object.entries(GROUP_NAMES).map(([n, label]) => `<label class="type-pick"><input type="checkbox" value="${n}" ${(ai.groups || [2, 3]).includes(Number(n)) ? 'checked' : ''}> ${label}</label>`).join('')}</div>
       </div>
       <label class="field"><span>Extra note for the AI (optional)</span>
         <input id="aiNote" value="${esc(ai.note)}" placeholder="e.g. use vocabulary: skills, qualifications, apply for"></label>
@@ -790,7 +794,8 @@ function readAiForm() {
     theme: $('#aiTheme').value.trim(),
     course: $('#aiCourse').value,
     rounds: Math.max(1, Math.min(12, Number($('#aiRounds').value) || 7)),
-    types: [...document.querySelectorAll('.type-pick input:checked')].map((i) => i.value),
+    types: [...document.querySelectorAll('#aiTypes input:checked')].map((i) => i.value),
+    groups: [...document.querySelectorAll('#aiGroups input:checked')].map((i) => Number(i.value)),
     note: $('#aiNote').value.trim(),
   };
   db.settings.ai = ai;
@@ -819,6 +824,8 @@ function importText(text) {
 
 function editorRound(r, i, n) {
   const typeSel = `<select data-change="draftType" data-i="${i}">${Logic.TYPE_KEYS.map((t) => `<option value="${t}" ${t === r.type ? 'selected' : ''}>${ROUND_TYPES[t].icon} ${ROUND_TYPES[t].name}</option>`).join('')}</select>`;
+  const groupSel = `<select data-change="draftGroup" data-i="${i}" aria-label="Groups" title="Group size for this round">
+    <option value="">👥 Default</option>${Object.entries(GROUP_NAMES).map(([n, label]) => `<option value="${n}" ${Number(n) === r.group ? 'selected' : ''}>👥 ${label}</option>`).join('')}</select>`;
   let special = '';
   if (r.type === 'picture') {
     const img = roundImage(r);
@@ -837,7 +844,7 @@ function editorRound(r, i, n) {
   }
   return `<div class="edit-round t-${r.type}">
     <div class="row">
-      <span class="rnum">${i + 1}</span>${typeSel}
+      <span class="rnum">${i + 1}</span>${typeSel}${groupSel}
       <input class="grow" data-input="field" data-i="${i}" data-f="title" value="${esc(r.title)}" placeholder="Title" aria-label="Title">
       <button class="icon-btn" data-action="moveRound" data-i="${i}" data-d="-1" ${i === 0 ? 'disabled' : ''} title="Move up">↑</button>
       <button class="icon-btn" data-action="moveRound" data-i="${i}" data-d="1" ${i === n - 1 ? 'disabled' : ''} title="Move down">↓</button>
@@ -1096,6 +1103,7 @@ const actions = {
     round.imageIdx = (round.imageIdx || 0) + 1;
     save(); render();
   },
+  nextPicture() { showNextPicture(); },
 };
 
 const changeHandlers = {
@@ -1121,6 +1129,11 @@ const changeHandlers = {
     const file = el.files && el.files[0];
     if (!file) return;
     file.text().then(importText);
+  },
+  draftGroup(el) {
+    const r = draft.rounds[Number(el.dataset.i)];
+    if (el.value) r.group = Number(el.value);
+    else delete r.group;
   },
   draftType(el) {
     const r = draft.rounds[Number(el.dataset.i)];
@@ -1195,6 +1208,7 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === '+' || e.key === '=') addMinute(1);
   else if (e.key === '-') addMinute(-1);
   else if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+  else if (e.key === 'n' || e.key === 'N') showNextPicture();
 });
 
 document.addEventListener('visibilitychange', () => {

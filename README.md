@@ -12,28 +12,30 @@ Data (classes, sessions, the class in progress) is saved in the browser's `local
 
 1. **Class**: paste names (one per line; add `*` for Challenge, e.g. `Maria*`, or `+` for Support, e.g. `Leo+`; no mark = neutral). Tap a name to cycle **neutral → + Support → ★ Challenge → Absent**. Level marks are only shown on this setup screen, never on the projector.
 2. **Rounds**: pick a session (two starter packs are included), create one with AI, or import JSON.
-3. **Start**: set minutes per round (default 5), pairs / trios / mix, notebook time and sound.
+3. **Start**: set minutes per round (default 5), default groups (pairs / trios / mix), notebook time and sound.
+
+**Group size per round.** Each round can have its own size, pairs, trios or fours: set it with the 👥 menu in **✏️ Edit** (👥 Default follows the Start panel), or let the AI choose. The round list shows each round's size, e.g. *Debate · Trios*. The starter packs run debates in trios (C judges) and problem solving in fours.
 
 Each round runs through these steps:
 
 | Step | Screen | Teacher controls |
 | --- | --- | --- |
-| Groups | Numbered pairs/trios; each name has a seat letter **A** / **B** / **C** (no level marks) | 🔀 Shuffle, Pairs/Trios, ±1 min, ▶ Start |
-| Talk | Task title, what A / B / C do, picture, boxes **1 Support** and **2 Challenge**, big timer, groups strip; halfway a chime says **swap** | −1 / +1 min, Pause, ⏹ Stop round |
+| Groups | Numbered groups; each name has a seat letter **A** / **B** / **C** / **D** (no level marks) | 🔀 Shuffle, Pairs/Trios/Fours, ±1 min, ▶ Start |
+| Talk | Task title, what each seat does, picture, boxes **1 Support** and **2 Challenge**, big timer, groups strip; halfway a chime says **swap** | 🖼️ Show next picture (picture rounds, after the swap), −1 / +1 min, Pause, ⏹ Stop round |
 | Notebook | One random one-line mission ("Write ONE thing your partner said") with a short countdown | Done → |
 | Report back | Name roll picks one student (fair rotation, never the same person twice in a row) and names their partner | 🎲 Someone else, Next round → |
 
-Keyboard: `Space` = main action (start / pause / next), `→` = skip ahead, `+` / `−` = minute, `F` = fullscreen.
+Keyboard: `Space` = main action (start / pause / next), `→` = skip ahead, `+` / `−` = minute, `N` = show next picture, `F` = fullscreen.
 
-New groups keep Support students apart (two Support students only share a group when there are more of them than groups) and, within that rule, avoid previous partners. With an odd number of students there is one trio. The partner history is kept per class across lessons ("Reset partners" clears it). If the page is reloaded mid-class, a **Resume** banner appears.
+New groups keep Support students apart (two Support students only share a group when there are more of them than groups) and, within that rule, avoid previous partners. With an odd number of students there is one trio; trios and fours that don't divide evenly shrink by one (15 students in fours = 4, 4, 4, 3). The partner history is kept per class across lessons ("Reset partners" clears it). If the page is reloaded mid-class, a **Resume** banner appears.
 
 ## Who speaks
 
-One rule for every round: **A starts, and the halfway chime means swap.** Partners share the topic but have different jobs, so nobody can just say "me too". The screen shows each job next to its letter and flips A and B at the swap. In a trio, C keeps one job all round.
+One rule for every round: **A starts, and the halfway chime means swap.** Partners share the topic but have different jobs, so nobody can just say "me too". The screen shows each job next to its letter and flips A and B at the swap. C keeps one job all round, and in a group of four D does the same job as C.
 
-| Round | A | B | C (trios) | Halfway |
+| Round | A | B | C, D (trios, fours) | Halfway |
 | --- | --- | --- | --- | --- |
-| `picture` 🖼️ | 👀 Describes it | 🙈 Doesn't look, asks questions | 🙈 Doesn't look either | Swap; a 5-second countdown, then a new picture |
+| `picture` 🖼️ | 👀 Describes it | 🙈 Doesn't look, asks questions | 🙈 Doesn't look either | Swap: picture 1 stays up so B can check it, students change places, then you tap **🖼️ Show next picture** |
 | `topic` 💬 | 🎤 Asks, and asks "Why?" | 💬 Answers | 💬 Answers too | Swap. No "me too"! |
 | `roleplay` 🎭 | First role | Second role | 🎬 Director: adds a problem | Swap roles, play it again |
 | `defend` ⚖️ (Debate) | Defends the first option | Defends the second | ⚖️ Judge: who wins? | Swap sides |
@@ -46,7 +48,7 @@ Seat letters also carry the hidden level help: Support students get the seat tha
 
 ## AI content workflow
 
-**✨ Create with AI** → type the theme (e.g. *"Unit 1: study and career plans after 4º ESO"*), course and number of rounds → **Copy prompt** → paste it into ChatGPT / Claude / Gemini → paste the answer back → **Import**. The importer copes with code fences and extra text around the JSON. You can also re-edit, reorder, change pictures and export sessions as `.json` to share with colleagues.
+**✨ Create with AI** → type the theme (e.g. *"Unit 1: study and career plans after 4º ESO"*), course, number of rounds and the group sizes the AI may use (it picks one per round) → **Copy prompt** → paste it into ChatGPT / Claude / Gemini → paste the answer back → **Import**. The importer copes with code fences and extra text around the JSON. You can also re-edit, reorder, change pictures and export sessions as `.json` to share with colleagues.
 
 ### JSON format
 
@@ -58,18 +60,19 @@ Seat letters also carry the hidden level help: Support students get the seat tha
     {
       "type": "picture",
       "title": "At work",
+      "group": 2,
       "imageQuery": "young woman working in laboratory",
       "support": "Describe the picture. What is this person's job?",
       "challenge": "Would you like this job? What skills do you need? Why?",
       "words": ["She is a...", "She works in..."]
     },
     { "type": "roleplay", "title": "Job interview", "roles": ["Interviewer", "Candidate"], "support": "...", "challenge": "..." },
-    { "type": "defend", "title": "Bachillerato or FP?", "options": ["Bachillerato", "FP"], "support": "...", "challenge": "..." }
+    { "type": "defend", "title": "Bachillerato or FP?", "group": 3, "options": ["Bachillerato", "FP"], "support": "...", "challenge": "..." }
   ]
 }
 ```
 
-Optional per round: `words` (phrases shown under Support), `imageQuery` (picture), `image` (a fixed URL), `roles` (roleplay: A plays the first, B the second), `options` (defend: A's side first, B's second). A bare array of rounds is also accepted.
+Optional per round: `group` (2, 3 or 4; without it the round follows the default groups), `words` (phrases shown under Support), `imageQuery` (picture), `image` (a fixed URL), `roles` (roleplay: A plays the first, B the second), `options` (defend: A's side first, B's second). A bare array of rounds is also accepted.
 
 ## Pictures
 

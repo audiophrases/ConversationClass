@@ -356,7 +356,9 @@ pre {
   padding: 0.7rem 0.8rem 0.2rem;
   margin: 0.8rem 0;
 }
-.edit-round > .row:first-child select { width: auto; }
+.edit-round > .row:first-child { flex-wrap: wrap; }
+.edit-round > .row:first-child select { width: auto; flex: none; }
+.edit-round > .row:first-child input { flex: 1 1 8rem; }
 .edit-tiers { align-items: stretch; }
 .edit-tiers .field { margin: 0.5rem 0 0; }
 .tier-field.S > span { color: var(--S); }

@@ -17,6 +17,25 @@ for (let n = 2; n <= 32; n += 1) {
 assert.deepStrictEqual(L.groupSizes(7, 2).sort(), [2, 2, 3]);
 assert.deepStrictEqual(L.groupSizes(7, 3).sort(), [2, 2, 3]);
 
+// fours: never above 4, never a pair once there are 6+ students
+for (let n = 4; n <= 32; n += 1) {
+  const f = L.groupSizes(n, 4);
+  assert.strictEqual(f.reduce((a, b) => a + b, 0), n);
+  assert.ok(f.every((s) => s >= (n >= 6 ? 3 : 2) && s <= 4), `fours n=${n}: ${f}`);
+}
+assert.deepStrictEqual(L.groupSizes(15, 4).sort(), [3, 4, 4, 4]);
+
+// fours keep Support students apart too, and every seat gets filled
+const lv16 = Object.fromEntries(ids(16).map((id, i) => [id, i < 4 ? 'S' : '']));
+for (let trial = 0; trial < 20; trial += 1) {
+  const g4 = L.makeGroups(ids(16), 4, {}, lv16).map((g) => L.orderGroup(g, lv16));
+  assert.deepStrictEqual(sizes(g4), [4, 4, 4, 4]);
+  g4.forEach((g) => {
+    assert.strictEqual(g.filter((id) => lv16[id] === 'S').length, 1, 'one Support per four');
+    assert.strictEqual(lv16[g[1]], 'S', 'Support takes seat B');
+  });
+}
+
 // every student appears exactly once
 const g = L.makeGroups(ids(21), 2);
 assert.deepStrictEqual(g.flat().sort(), ids(21).sort());
@@ -115,5 +134,22 @@ const prompt = L.buildAiPrompt({ theme: 'Careers', course: '4º ESO', rounds: 6 
 assert.ok(prompt.includes('THEME: Careers') && prompt.includes('exactly 6 speaking rounds'));
 const example = L.normalizeSession(L.extractJson(prompt.slice(prompt.lastIndexOf('\n{'))));
 assert.strictEqual(example.rounds.length, 2);
+assert.deepStrictEqual(example.rounds.map((r) => r.group), [2, 3], 'default example uses pairs, then trios');
+
+// group sizes in the prompt follow the teacher's choice
+const fours = L.buildAiPrompt({ theme: 'x', groups: [4] });
+assert.ok(fours.includes('use 4 (groups of four) for every round'));
+assert.deepStrictEqual(L.normalizeSession(L.extractJson(fours.slice(fours.lastIndexOf('\n{')))).rounds.map((r) => r.group), [4, 4]);
+assert.ok(L.buildAiPrompt({ theme: 'x', groups: [2, 3, 4] }).includes('2 (pairs), 3 (trios), 4 (groups of four)'));
+
+// group field: numbers or words, 2-4 only
+const grp = (v) => L.normalizeRound({ type: 'topic', support: 'a', group: v }).group;
+assert.strictEqual(grp(3), 3);
+assert.strictEqual(grp('fours'), 4);
+assert.strictEqual(grp('Pairs'), 2);
+assert.strictEqual(grp('4'), 4);
+assert.strictEqual(grp(5), undefined);
+assert.strictEqual(grp(undefined), undefined);
+assert.strictEqual(L.normalizeRound({ type: 'topic', support: 'a', groupSize: 3 }).group, 3);
 
 console.log('All logic tests passed.');

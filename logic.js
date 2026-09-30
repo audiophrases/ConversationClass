@@ -17,12 +17,12 @@
     return a < b ? `${a}|${b}` : `${b}|${a}`;
   }
 
-  // Group sizes for n students: pairs leave at most one trio; trios become pairs
-  // rather than leaving anyone alone.
+  // Group sizes for n students: pairs leave at most one trio; trios and fours
+  // shrink by one rather than leaving anyone alone.
   function groupSizes(n, size) {
     if (n <= 0) return [];
     if (n <= 3) return [n];
-    const count = size === 3 ? Math.ceil(n / 3) : Math.floor(n / 2);
+    const count = size >= 3 ? Math.ceil(n / size) : Math.floor(n / 2);
     const sizes = Array(count).fill(Math.floor(n / count));
     for (let i = 0; i < n % count; i += 1) sizes[i] += 1;
     return sizes;
@@ -104,9 +104,9 @@
   }
 
   // Seat order inside a group decides who is A (starts), B and C. Support
-  // students take the given seats first (default B, then C, then A) so they
+  // students take the given seats first (default B, C, D, then A) so they
   // hear a partner go first; everyone else gets a random seat.
-  function orderGroup(group, levels = {}, slots = [1, 2, 0], rand = Math.random) {
+  function orderGroup(group, levels = {}, slots = [1, 2, 3, 0], rand = Math.random) {
     const out = [];
     const free = slots.filter((i) => i < group.length);
     const rest = [];
@@ -152,8 +152,20 @@
     creative: 'creative: imagine/invent something (story, advert, future, invention...). A starts, B adds.',
   };
 
-  function buildAiPrompt({ theme, course, rounds = 7, types = TYPE_KEYS, note = '' }) {
+  const GROUP_WORDS = { 2: 'pairs', 3: 'trios', 4: 'groups of four' };
+
+  function groupRules(sizes) {
+    if (sizes.length === 1) return [`- "group": use ${sizes[0]} (${GROUP_WORDS[sizes[0]]}) for every round.`];
+    return [
+      `- "group": the group size for this round: ${sizes.map((n) => `${n} (${GROUP_WORDS[n]})`).join(', ')}. Choose what suits the task and vary it across the session:`,
+      '  pairs for interviews, describing and most role plays; trios when a third student can judge or direct (debates, role plays); fours for problem solving and planning.',
+      '  In trios and fours, students C and D answer too, judge the debate, direct the role play or add ideas.',
+    ];
+  }
+
+  function buildAiPrompt({ theme, course, rounds = 7, types = TYPE_KEYS, groups = [2, 3], note = '' }) {
     const chosen = (types && types.length ? types : TYPE_KEYS).filter((t) => TYPE_DESCRIPTIONS[t]);
+    const sizes = [2, 3, 4].filter((n) => (groups && groups.length ? groups : [2, 3]).includes(n));
     const example = {
       title: 'Unit 1 · Study and career plans',
       level: course || '4º ESO',
@@ -161,6 +173,7 @@
         {
           type: 'picture',
           title: 'At work',
+          group: sizes[0],
           imageQuery: 'young woman working in laboratory',
           support: 'Describe the picture. What is this person\'s job? What is she doing?',
           challenge: 'Would you like this job? What skills and studies do you need for it? Why?',
@@ -169,6 +182,7 @@
         {
           type: 'defend',
           title: 'Bachillerato or FP?',
+          group: sizes.includes(3) ? 3 : sizes[sizes.length - 1],
           options: ['Bachillerato', 'Vocational training (FP)'],
           support: 'Defend your side. Give two reasons.',
           challenge: 'Compare both options and convince your partner. Answer their arguments.',
@@ -184,9 +198,9 @@
       `STUDENTS: ${course || '3º/4º ESO'} (teenagers), mixed levels in the same class.`,
       note ? `TEACHER'S NOTE: ${note}` : null,
       '',
-      `Create exactly ${rounds} speaking rounds. Each round is a 5-minute conversation in pairs or trios.`,
+      `Create exactly ${rounds} speaking rounds. Each round is a 5-minute conversation in small groups (${sizes.map((n) => GROUP_WORDS[n]).join(' / ')}).`,
       'Students only SPEAK (no writing). The task is projected on one big screen, so keep text SHORT.',
-      'In every pair, student A starts and they swap jobs halfway, so each task must work for both students.',
+      'In every group, student A starts and A and B swap jobs halfway, so each task must work for both of them.',
       '',
       'Round types to use (vary the order, don\'t repeat the same type twice in a row):',
       ...chosen.map((t) => `- ${TYPE_DESCRIPTIONS[t]}`),
@@ -198,6 +212,7 @@
       '- Speak directly to the students ("Describe...", "Tell your partner...", "Agree on...").',
       '- "words": 2–4 short sentence starters or useful phrases that help support students.',
       '- "title": 1–5 words.',
+      ...groupRules(sizes),
       '- "imageQuery" (picture rounds only): 3–6 plain English words for a stock-photo search. Concrete and photographable: people, places, actions. No brands, no famous people, no text.',
       '- Content must be appropriate and interesting for teenagers.',
       '',
@@ -231,6 +246,13 @@
   const str = (v, max = 400) => String(v == null ? '' : v).trim().slice(0, max);
   const strList = (v, n) => (Array.isArray(v) ? v.map((x) => str(x, 80)).filter(Boolean).slice(0, n) : []);
 
+  // Round group size: 2-4, from a number or a word ("pairs", "trios", "fours").
+  function parseGroup(v) {
+    const words = { pair: 2, pairs: 2, trio: 3, trios: 3, three: 3, threes: 3, four: 4, fours: 4 };
+    const n = words[String(v).trim().toLowerCase()] || Math.round(Number(v));
+    return n >= 2 && n <= 4 ? n : null;
+  }
+
   function normalizeRound(r) {
     const type = TYPE_KEYS.includes(String(r && r.type).toLowerCase()) ? String(r.type).toLowerCase() : 'topic';
     const round = {
@@ -241,6 +263,8 @@
       words: strList(r.words || r.phrases, 6),
     };
     if (!round.support && !round.challenge) return null;
+    const group = parseGroup(r.group != null ? r.group : (r.groupSize != null ? r.groupSize : r.size));
+    if (group) round.group = group;
     if (!round.support) round.support = round.challenge;
     if (!round.challenge) round.challenge = round.support;
     if (type === 'picture') {
@@ -271,7 +295,7 @@
   }
 
   const api = {
-    TYPE_KEYS, shuffle, pairKey, groupSizes, makeGroups, orderGroup, recordGroups, pickReporter,
+    TYPE_KEYS, shuffle, pairKey, groupSizes, makeGroups, orderGroup, recordGroups, pickReporter, parseGroup,
     buildAiPrompt, extractJson, normalizeRound, normalizeSession,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
