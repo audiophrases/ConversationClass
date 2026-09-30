@@ -58,6 +58,25 @@ for (let r = 0; r < 8; r += 1) {
   L.recordGroups(history, groups);
 }
 
+// seat order: Support students take the preferred seats (default B, then C)
+const seatLv = { sup: 'S', sup2: 'S', mid: 'N', top: 'C' };
+for (let trial = 0; trial < 30; trial += 1) {
+  assert.strictEqual(L.orderGroup(['sup', 'top'], seatLv)[1], 'sup', 'Support is B in a pair');
+  assert.strictEqual(L.orderGroup(['top', 'sup'], seatLv, [0, 2, 1])[0], 'sup', 'Support is A when asking first');
+  const trio = L.orderGroup(['sup', 'mid', 'sup2'], seatLv);
+  assert.strictEqual(trio[0], 'mid', 'two Support in a trio take B and C');
+  assert.deepStrictEqual(trio.slice().sort(), ['mid', 'sup', 'sup2']);
+  assert.deepStrictEqual(L.orderGroup(['sup', 'sup2'], seatLv).sort(), ['sup', 'sup2']);
+}
+// without Support students every seat still gets filled, in random order
+const firsts = new Set();
+for (let trial = 0; trial < 40; trial += 1) {
+  const g3 = L.orderGroup(['mid', 'top', 'x'], seatLv);
+  assert.deepStrictEqual(g3.slice().sort(), ['mid', 'top', 'x']);
+  firsts.add(g3[0]);
+}
+assert.strictEqual(firsts.size, 3, 'A is random when nobody is Support');
+
 // reporter: fair rotation, never twice in a row
 const counts = {};
 let last = null;

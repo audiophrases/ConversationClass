@@ -17,9 +17,9 @@ Data (classes, sessions, the class in progress) is saved in the browser's `local
 Each round runs through these steps:
 
 | Step | Screen | Teacher controls |
-|---|---|---|
-| Groups | Numbered pairs/trios (names only, no level marks) | 🔀 Shuffle, Pairs/Trios, ±1 min, ▶ Start |
-| Talk | Task title, picture, **Support** and **Challenge** boxes, big timer, groups strip; a nudge pops up halfway ("Switch roles!", "Ask a follow-up question") | −1 / +1 min, Pause, ⏹ Stop round |
+| --- | --- | --- |
+| Groups | Numbered pairs/trios; each name has a seat letter **A** / **B** / **C** (no level marks) | 🔀 Shuffle, Pairs/Trios, ±1 min, ▶ Start |
+| Talk | Task title, what A / B / C do, picture, boxes **1 Support** and **2 Challenge**, big timer, groups strip; halfway a chime says **swap** | −1 / +1 min, Pause, ⏹ Stop round |
 | Notebook | One random one-line mission ("Write ONE thing your partner said") with a short countdown | Done → |
 | Report back | Name roll picks one student (fair rotation, never the same person twice in a row) and names their partner | 🎲 Someone else, Next round → |
 
@@ -27,11 +27,22 @@ Keyboard: `Space` = main action (start / pause / next), `→` = skip ahead, `+` 
 
 New groups keep Support students apart (two Support students only share a group when there are more of them than groups) and, within that rule, avoid previous partners. With an odd number of students there is one trio. The partner history is kept per class across lessons ("Reset partners" clears it). If the page is reloaded mid-class, a **Resume** banner appears.
 
-## Round types
+## Who speaks
 
-`picture` 🖼️ · `topic` 💬 · `roleplay` 🎭 · `defend` ⚖️ (choose & defend) · `problem` 🧩 · `creative` ✨
+One rule for every round: **A starts, and the halfway chime means swap.** Partners share the topic but have different jobs, so nobody can just say "me too". The screen shows each job next to its letter and flips A and B at the swap. In a trio, C keeps one job all round.
 
-Every round is **one task with two depths**: `support` (A1–A2, concrete) and `challenge` (B2–C1, opinion / speculation / persuasion).
+| Round | A | B | C (trios) | Halfway |
+| --- | --- | --- | --- | --- |
+| `picture` 🖼️ | 👀 Describes it | 🙈 Doesn't look, asks questions | 🙈 Doesn't look either | Swap; a 5-second countdown, then a new picture |
+| `topic` 💬 | 🎤 Asks, and asks "Why?" | 💬 Answers | 💬 Answers too | Swap. No "me too"! |
+| `roleplay` 🎭 | First role | Second role | 🎬 Director: adds a problem | Swap roles, play it again |
+| `defend` ⚖️ (Debate) | Defends the first option | Defends the second | ⚖️ Judge: who wins? | Swap sides |
+| `problem` 🧩 | 💡 First idea | 💡 A different idea | 💡 Another idea | Agree on ONE idea |
+| `creative` ✨ | ✨ Starts | ➕ Adds more | ➕ Adds more | Swap, add a twist |
+
+Pairs start with box **1** (`support`) and move to box **2** (`challenge`) when it feels easy. Every round is **one task with two depths**: `support` (A1–A2, concrete) and `challenge` (B2–C1, opinion / speculation / persuasion).
+
+Seat letters also carry the hidden level help: Support students get the seat that goes second (B; in topic rounds A, because asking first means hearing an answer before giving yours), so they always hear a partner first. Nobody else sees why.
 
 ## AI content workflow
 
@@ -58,7 +69,7 @@ Every round is **one task with two depths**: `support` (A1–A2, concrete) and `
 }
 ```
 
-Optional per round: `words` (phrases shown under Support), `imageQuery` (picture), `image` (a fixed URL), `roles` (roleplay), `options` (defend). A bare array of rounds is also accepted.
+Optional per round: `words` (phrases shown under Support), `imageQuery` (picture), `image` (a fixed URL), `roles` (roleplay: A plays the first, B the second), `options` (defend: A's side first, B's second). A bare array of rounds is also accepted.
 
 ## Pictures
 

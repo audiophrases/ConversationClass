@@ -1,41 +1,49 @@
 // Static content: round types, notebook missions and built-in session packs.
 
+// Every round works the same way: A (first name in the group) starts, and at
+// halfway a chime says "swap". `roles` are the A / B / C jobs shown on the
+// projector (role plays and debates use the round's own roles / options for A
+// and B). A and B trade jobs at the swap; C keeps theirs. `swaps: false` keeps
+// the jobs and shows the halfway message as the next step instead.
+// `supportSlots`: seats Support students take first (default B, then C, then A).
 const ROUND_TYPES = {
   picture: {
     icon: '🖼️',
     name: 'Picture',
-    hint: 'Describe and talk about the picture.',
-    nudge: 'Ask your partner: "What else can you see?"',
+    roles: ['👀 Describe it', '🙈 Don\'t look! Ask questions', '🙈 Don\'t look! Ask questions'],
+    swap: '🔄 Swap!',
   },
   topic: {
     icon: '💬',
     name: 'Topic talk',
-    hint: 'Talk about the topic. Ask and answer.',
-    nudge: 'Ask a follow-up question: "Why?" "How?"',
+    roles: ['🎤 Ask + “Why?”', '💬 Answer', '💬 Answer too'],
+    swap: '🔄 Swap! No “me too” 😉',
+    supportSlots: [0, 2, 1], // asking first means hearing an answer before giving yours
   },
   roleplay: {
     icon: '🎭',
     name: 'Role play',
-    hint: 'Act it out! The first name in your group starts as role A.',
-    nudge: 'Switch roles!',
+    roles: ['🎭 Start the scene', '🎭 Answer', '🎬 Director: add a problem!'],
+    swap: '🔄 Swap roles! Play it again',
   },
   defend: {
     icon: '⚖️',
-    name: 'Choose & defend',
-    hint: 'Choose one side and give your reasons.',
-    nudge: 'Now try to change your partner\'s mind!',
+    name: 'Debate',
+    roles: ['👈 First option', '👉 Second option', '⚖️ Judge: who wins?'],
+    swap: '🔄 Swap sides!',
   },
   problem: {
     icon: '🧩',
     name: 'Problem solver',
-    hint: 'Solve the problem together.',
-    nudge: 'Agree on ONE best idea.',
+    roles: ['💡 First idea', '💡 A different idea', '💡 Another idea'],
+    swap: '🤝 Now agree on ONE idea',
+    swaps: false,
   },
   creative: {
     icon: '✨',
     name: 'Creative challenge',
-    hint: 'Invent, imagine, have fun.',
-    nudge: 'Add a surprise twist!',
+    roles: ['✨ Start', '➕ Add more', '➕ Add more'],
+    swap: '🔄 Swap! Add a twist 🌀',
   },
 };
 
@@ -99,9 +107,9 @@ const BUILT_IN_SESSIONS = [
         type: 'defend',
         title: 'City or countryside?',
         options: ['Live in a big city', 'Live in the countryside'],
-        support: 'Choose one. Give two reasons: "I prefer... because..."',
-        challenge: 'Choose one and convince your partner. Answer their arguments: "I see your point, but..."',
-        words: ['I prefer...', 'because...', 'It\'s better / worse...'],
+        support: 'Defend your side. Give two reasons: "It\'s better because..."',
+        challenge: 'Convince your partner. Answer their arguments: "I see your point, but..."',
+        words: ['It\'s better because...', 'It\'s better / worse...', 'I see your point, but...'],
       },
       {
         type: 'creative',
@@ -137,9 +145,9 @@ const BUILT_IN_SESSIONS = [
         type: 'defend',
         title: 'Bachillerato or FP?',
         options: ['Bachillerato', 'Vocational training (FP)'],
-        support: 'Which is better for you? Give two reasons.',
-        challenge: 'Which is better for most students? Compare them and convince your partner.',
-        words: ['I prefer...', 'It\'s more / less...', 'I agree / I don\'t agree'],
+        support: 'Defend your side. Give two reasons.',
+        challenge: 'Compare both options and convince your partner. Answer their arguments.',
+        words: ['It\'s better because...', 'It\'s more / less...', 'I see your point, but...'],
       },
       {
         type: 'roleplay',

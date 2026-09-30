@@ -103,6 +103,21 @@
     return shuffle(best, rand);
   }
 
+  // Seat order inside a group decides who is A (starts), B and C. Support
+  // students take the given seats first (default B, then C, then A) so they
+  // hear a partner go first; everyone else gets a random seat.
+  function orderGroup(group, levels = {}, slots = [1, 2, 0], rand = Math.random) {
+    const out = [];
+    const free = slots.filter((i) => i < group.length);
+    const rest = [];
+    shuffle(group, rand).forEach((id) => {
+      if (levels[id] === 'S' && free.length) out[free.shift()] = id;
+      else rest.push(id);
+    });
+    for (let i = 0; i < group.length; i += 1) if (out[i] === undefined) out[i] = rest.shift();
+    return out;
+  }
+
   function recordGroups(history, groups) {
     groups.forEach((g) => {
       for (let i = 0; i < g.length; i += 1) {
@@ -129,12 +144,12 @@
   // ---------- AI prompt ----------
 
   const TYPE_DESCRIPTIONS = {
-    picture: 'picture: students describe and discuss a photo. Must include "imageQuery".',
-    topic: 'topic: a conversation topic with questions to discuss.',
-    roleplay: 'roleplay: a short situation with 2 roles. Must include "roles" (exactly 2).',
-    defend: 'defend: choose one of 2 options and justify it. Must include "options" (exactly 2).',
-    problem: 'problem: a realistic problem the group must solve together.',
-    creative: 'creative: imagine/invent something (story, advert, future, invention...).',
+    picture: 'picture: A describes a photo while B does not look and asks questions; at the swap a new photo appears. Must include "imageQuery".',
+    topic: 'topic: A asks, B answers. Write the tasks as questions A can read aloud to B.',
+    roleplay: 'roleplay: a short situation with 2 roles (A plays the first role, B the second). Must include "roles" (exactly 2).',
+    defend: 'defend: a mini-debate. A defends the first option, B the second (sides are given, not chosen). Must include "options" (exactly 2). Write the tasks as "defend your side", never "choose one".',
+    problem: 'problem: a realistic problem. Each student suggests different ideas, then they agree on one.',
+    creative: 'creative: imagine/invent something (story, advert, future, invention...). A starts, B adds.',
   };
 
   function buildAiPrompt({ theme, course, rounds = 7, types = TYPE_KEYS, note = '' }) {
@@ -155,9 +170,9 @@
           type: 'defend',
           title: 'Bachillerato or FP?',
           options: ['Bachillerato', 'Vocational training (FP)'],
-          support: 'Which is better for you? Give two reasons.',
-          challenge: 'Which is better for most students? Compare them and convince your partner.',
-          words: ['I prefer...', 'It\'s more / less...'],
+          support: 'Defend your side. Give two reasons.',
+          challenge: 'Compare both options and convince your partner. Answer their arguments.',
+          words: ['It\'s better because...', 'It\'s more / less...'],
         },
       ],
     };
@@ -171,6 +186,7 @@
       '',
       `Create exactly ${rounds} speaking rounds. Each round is a 5-minute conversation in pairs or trios.`,
       'Students only SPEAK (no writing). The task is projected on one big screen, so keep text SHORT.',
+      'In every pair, student A starts and they swap jobs halfway, so each task must work for both students.',
       '',
       'Round types to use (vary the order, don\'t repeat the same type twice in a row):',
       ...chosen.map((t) => `- ${TYPE_DESCRIPTIONS[t]}`),
@@ -178,6 +194,7 @@
       'Every round has ONE task with TWO versions (same topic, different depth):',
       '- "support": for weak students (A1–A2). Concrete, simple words, short questions. Max 25 words.',
       '- "challenge": for strong students (B2–C1). Opinions, speculation, hypotheticals, justifying, persuading. Max 30 words.',
+      '- Pairs start with "support" and move on to "challenge" when it feels easy, so "challenge" goes deeper into the same task.',
       '- Speak directly to the students ("Describe...", "Tell your partner...", "Agree on...").',
       '- "words": 2–4 short sentence starters or useful phrases that help support students.',
       '- "title": 1–5 words.',
@@ -254,7 +271,7 @@
   }
 
   const api = {
-    TYPE_KEYS, shuffle, pairKey, groupSizes, makeGroups, recordGroups, pickReporter,
+    TYPE_KEYS, shuffle, pairKey, groupSizes, makeGroups, orderGroup, recordGroups, pickReporter,
     buildAiPrompt, extractJson, normalizeRound, normalizeSession,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

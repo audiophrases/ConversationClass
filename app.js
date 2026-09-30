@@ -4,6 +4,7 @@ const STORE_KEY = 'talkRounds.v1';
 const COURSES = ['1º ESO', '2º ESO', '3º ESO', '4º ESO', '1º Bachillerato', '2º Bachillerato'];
 const GROUP_MODES = { pairs: 'Pairs', trios: 'Trios', mix: 'Mix' };
 const NOTE_OPTIONS = [0, 30, 60, 90];
+const NEW_PICTURE_DELAY = 5000; // ms between the halfway swap and picture 2
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -324,25 +325,32 @@ function timerRemaining() {
   return t.endAt ? Math.max(0, t.endAt - Date.now()) : t.remaining;
 }
 
-function nameSpan(id) {
-  return `<span class="nm">${esc(nameOf(id))}</span>`;
+// Seat letter: A (filled) starts, B and C follow. The same letters label the jobs.
+function seat(i) {
+  return `<span class="seat${i ? '' : ' first'}">${'ABC'[i]}</span>`;
+}
+
+function nameSpan(id, i) {
+  return `<span class="nm">${seat(i)}${esc(nameOf(id))}</span>`;
 }
 
 function groupStrip(groups) {
-  return `<footer class="group-strip">${groups.map((g, i) => `<span class="gchip"><b>${i + 1}</b>${g.map(nameSpan).join('<i>·</i>')}</span>`).join('')}</footer>`;
+  return `<footer class="group-strip">${groups.map((g, i) => `<span class="gchip"><b>${i + 1}</b>${g.map(nameSpan).join('')}</span>`).join('')}</footer>`;
+}
+
+// The A / B / C jobs for this round. A and B trade jobs at the halfway swap.
+function roleChips(round, L) {
+  const t = ROUND_TYPES[round.type] || ROUND_TYPES.topic;
+  const own = (round.type === 'roleplay' && round.roles) || (round.type === 'defend' && round.options) || [];
+  const jobs = t.roles.map((job, i) => own[i] || job);
+  if (L.swapped && t.swaps !== false) [jobs[0], jobs[1]] = [jobs[1], jobs[0]];
+  const chip = (i) => `<span class="role">${seat(i)}${esc(jobs[i])}</span>`;
+  const trio = L.groups.some((g) => g.length > 2);
+  return `<div class="extras">${chip(0)}${round.type === 'defend' ? '<span class="vs">vs</span>' : ''}${chip(1)}${trio ? chip(2) : ''}
+    ${L.swapped && t.swaps === false ? `<span class="role now">${esc(t.swap)}</span>` : ''}</div>`;
 }
 
 function talkMain(round, L) {
-  const t = ROUND_TYPES[round.type] || ROUND_TYPES.topic;
-  let extras = '';
-  if (round.type === 'roleplay' && round.roles) {
-    const hasTrio = L.groups.some((g) => g.length > 2) && round.roles.length < 3;
-    extras = `<div class="extras">${round.roles.map((r, i) => `<span class="role"><b>${'ABC'[i]}</b> ${esc(r)}</span>`).join('')}
-      ${hasTrio ? '<span class="role muted"><b>C</b> Director 🎬 adds a problem!</span>' : ''}</div>`;
-  }
-  if (round.type === 'defend' && round.options) {
-    extras = `<div class="extras options">${round.options.map((o) => `<span class="option">${esc(o)}</span>`).join('<span class="vs">or</span>')}</div>`;
-  }
   const img = round.type === 'picture' ? roundImage(round) : '';
   const picture = round.type === 'picture'
     ? `<figure class="task-image">${img
@@ -353,17 +361,16 @@ function talkMain(round, L) {
   return `
     <div class="task-head">
       <h1 class="task-title">${esc(round.title)}</h1>
-      <p class="task-hint">${t.hint}</p>
-      ${extras}
+      ${roleChips(round, L)}
     </div>
     <div class="talk-grid ${picture ? 'with-image' : ''}">
       ${picture}
       <div class="tiers">
-        <div class="tier S"><div class="tier-label"><span class="dot"></span>Support</div>
+        <div class="tier S"><div class="tier-label"><span class="tier-num">1</span>Support</div>
           <p>${esc(round.support)}</p>
           ${round.words && round.words.length ? `<div class="words">${round.words.map((w) => `<span>${esc(w)}</span>`).join('')}</div>` : ''}
         </div>
-        <div class="tier C"><div class="tier-label"><span class="dot"></span>Challenge</div>
+        <div class="tier C"><div class="tier-label"><span class="tier-num">2</span>Challenge</div>
           <p>${esc(round.challenge)}</p>
         </div>
       </div>
@@ -469,10 +476,11 @@ function tick() {
       timerEl.classList.toggle('low', rem <= 30000);
     }
     if (fill) fill.style.width = `${Math.min(100, 100 - (rem / L.timer.total) * 100)}%`;
-    if (!L.nudged && L.timer.endAt && rem <= L.timer.total / 2) {
-      L.nudged = true;
-      save();
-      showNudge((ROUND_TYPES[L.rounds[L.index].type] || ROUND_TYPES.topic).nudge);
+    if (!L.swapped && L.timer.endAt && rem <= L.timer.total / 2) swapHalfway();
+    if (L.newPictureAt) {
+      if (Date.now() >= L.newPictureAt) { showNextPicture(); return; } // re-renders, which ticks again
+      const nudge = $('#nudge');
+      if (nudge) nudge.textContent = pictureCountdown();
     }
     if (rem <= 0) timeUp();
   } else if (L.phase === 'note') {
@@ -488,11 +496,42 @@ function tick() {
 function showNudge(text) {
   const el = $('#nudge');
   if (!el) return;
-  el.textContent = `💡 ${text}`;
+  el.textContent = text;
   el.classList.add('show');
   sfx.chime();
   clearTimeout(nudgeHandle);
   nudgeHandle = setTimeout(() => el.classList.remove('show'), 8000);
+}
+
+// Halfway: A and B swap jobs (the chips on screen flip) and a chime says so.
+// Picture rounds then switch picture after a short countdown, so the partner
+// who couldn't look gets to see picture 1 before the new one appears.
+function swapHalfway() {
+  const L = db.live;
+  const round = L.rounds[L.index];
+  const list = round.type === 'picture' ? imageCandidates(round) : [];
+  L.swapped = true;
+  if (list.length > 1) {
+    L.newPictureAt = Date.now() + NEW_PICTURE_DELAY;
+    new Image().src = list[((round.imageIdx || 0) + 1) % list.length]; // preload
+  }
+  save();
+  render();
+  showNudge(pictureCountdown() || (ROUND_TYPES[round.type] || ROUND_TYPES.topic).swap);
+}
+
+function pictureCountdown() {
+  const at = db.live.newPictureAt;
+  return at ? `🔄 Swap! New picture in ${Math.max(1, Math.ceil((at - Date.now()) / 1000))}…` : '';
+}
+
+function showNextPicture() {
+  const L = db.live;
+  const round = L.rounds[L.index];
+  round.imageIdx = (round.imageIdx || 0) + 1;
+  L.newPictureAt = null;
+  save();
+  render();
 }
 
 function presentIds() {
@@ -511,14 +550,17 @@ function buildGroups() {
   const L = db.live;
   const ids = presentIds();
   const levels = Object.fromEntries(ids.map((id) => [id, levelOf(id)]));
-  L.groups = Logic.makeGroups(ids, L.groupSize, liveClass().history || {}, levels);
+  const { supportSlots } = ROUND_TYPES[L.rounds[L.index].type] || ROUND_TYPES.topic;
+  L.groups = Logic.makeGroups(ids, L.groupSize, liveClass().history || {}, levels)
+    .map((g) => Logic.orderGroup(g, levels, supportSlots));
 }
 
 function prepareRound() {
   const L = db.live;
   L.phase = 'groups';
   L.groupSize = sizeForRound(L.index);
-  L.nudged = false;
+  L.swapped = false;
+  L.newPictureAt = null;
   L.reporter = null;
   L.mission = '';
   L.timer = { total: db.settings.minutes * 60000, remaining: db.settings.minutes * 60000, endAt: null };
@@ -791,7 +833,7 @@ function editorRound(r, i, n) {
     special = `<div class="row">${[0, 1].map((k) => `<label class="field grow"><span>Role ${'AB'[k]}</span><input data-input="list" data-i="${i}" data-f="roles" data-k="${k}" value="${esc(roles[k] || '')}"></label>`).join('')}</div>`;
   } else if (r.type === 'defend') {
     const options = r.options || ['', ''];
-    special = `<div class="row">${[0, 1].map((k) => `<label class="field grow"><span>Option ${k + 1}</span><input data-input="list" data-i="${i}" data-f="options" data-k="${k}" value="${esc(options[k] || '')}"></label>`).join('')}</div>`;
+    special = `<div class="row">${[0, 1].map((k) => `<label class="field grow"><span>Side ${'AB'[k]}</span><input data-input="list" data-i="${i}" data-f="options" data-k="${k}" value="${esc(options[k] || '')}"></label>`).join('')}</div>`;
   }
   return `<div class="edit-round t-${r.type}">
     <div class="row">
