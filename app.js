@@ -1,5 +1,5 @@
 /* global ROUND_TYPES, Logic, searchImages, fileToDataUrl,
-   roundsFolderLink, loadRoundsCache, saveRoundsCache, fetchRoundsFolder */
+   loadRoundsCache, saveRoundsCache, fetchRoundsFolder */
 
 const STORE_KEY = 'talkRounds.v1';
 const COURSES = ['1º ESO', '2º ESO', '3º ESO', '4º ESO', '1º Bachillerato', '2º Bachillerato'];
@@ -33,7 +33,6 @@ let nudgeHandle = null;
 let draft = null; // session being edited
 let preview = null; // session being previewed (never saved)
 let roundsFolder = loadRoundsCache(); // lessons from the GitHub rounds/ folder
-let roundsStatus = ''; // '', 'checking' or why the folder couldn't be checked
 let wakeLock = null;
 
 // ---------- storage ----------
@@ -89,31 +88,24 @@ function parseLesson(text, name) {
   return session;
 }
 
+// Checked on every page load; if GitHub can't be reached, the copies saved in
+// this browser are used.
 async function refreshRoundsFolder() {
-  roundsStatus = 'checking';
-  if (view === 'setup') render();
   try {
     roundsFolder = await fetchRoundsFolder(roundsFolder, parseLesson);
     saveRoundsCache(roundsFolder);
-    roundsStatus = '';
   } catch (err) {
-    roundsStatus = err.message || 'offline';
+    console.warn(err);
   }
   if (view === 'setup') render();
   const session = currentSession();
   if (session) ensureImages(session.rounds).then((found) => { if (found && view === 'setup') render(); });
 }
 
-function roundsFolderStatus() {
-  const n = folderSessions().length;
-  const broken = roundsFolder.files.filter((f) => f.error);
-  let state = `${n} lesson${n === 1 ? '' : 's'}`;
-  if (roundsStatus === 'checking') state = 'checking…';
-  else if (roundsStatus) state = `couldn't check: ${esc(roundsStatus)}${n ? ` (showing the ${n} saved here)` : ''}`;
-  return `<p class="folder-status">☁️ <a href="${roundsFolderLink()}" target="_blank" rel="noopener">GitHub rounds folder</a>: ${state}
-    · <button class="link-btn" data-action="refreshRounds" title="Check GitHub for new or changed lessons">↻ Refresh</button>
-    · <a href="${roundsFolderLink(true)}" target="_blank" rel="noopener" title="Upload exported .json files (sign in to GitHub)">⬆️ Upload</a></p>
-    ${broken.map((f) => `<p class="folder-error">⚠️ ${esc(f.name)}: ${esc(f.error)}</p>`).join('')}`;
+// Files in the folder that aren't valid lessons: only shown when there are some.
+function roundsFolderErrors() {
+  return roundsFolder.files.filter((f) => f.error)
+    .map((f) => `<p class="folder-error">⚠️ GitHub rounds folder, ${esc(f.name)}: ${esc(f.error)}</p>`).join('');
 }
 
 function currentSession() {
@@ -331,7 +323,7 @@ function renderSetup() {
           ${[['In this browser', db.sessions], ['☁️ GitHub rounds folder', folderSessions()]].filter(([, list]) => list.length)
             .map(([label, list]) => `<optgroup label="${label}">${list.map((x) => `<option value="${esc(x.id)}" ${x.id === session.id ? 'selected' : ''}>${esc(x.title)}${x.level ? ` (${esc(x.level)})` : ''}</option>`).join('')}</optgroup>`).join('')}
         </select>` : '<p class="empty">No lessons yet. Create one with AI, import a .json file, start a new one, or add files to the GitHub rounds folder.</p>'}
-        ${roundsFolderStatus()}
+        ${roundsFolderErrors()}
         <div class="row wrap">
           <button class="btn primary soft" data-action="openAi">✨ Create with AI</button>
           <button class="btn ghost small" data-action="openImport">📥 Import</button>
@@ -1275,7 +1267,6 @@ const actions = {
     save(); render();
   },
   nextPicture() { showNextPicture(); },
-  refreshRounds() { refreshRoundsFolder(); },
   openPreview() { openPreview(); },
   previewPrev() { previewGo(-1); },
   previewNext() { previewGo(1); },

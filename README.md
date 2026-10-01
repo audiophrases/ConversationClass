@@ -12,8 +12,8 @@ Data (classes, sessions, the class in progress) is saved in the browser's `local
 
 Any lesson `.json` file in this repo's [`rounds/`](rounds/) folder appears in the lesson menu under **☁️ GitHub rounds folder**, on every device and browser, with no login or token. Only lessons are shared: class lists, student names, level marks, partner history and settings stay in each browser.
 
-- **Add or update a lesson:** pick it in the app → **⬇️ Export** → upload the `.json` to the folder on github.com (**⬆️ Upload** next to the folder status opens the upload page). Same file name = new version.
-- **See changes:** the app checks the folder on every page load; **↻ Refresh** checks again. Each file is downloaded once per version and kept in the browser, so lessons still load offline or when GitHub is busy (the public API allows 60 checks an hour).
+- **Add or update a lesson:** pick it in the app → **⬇️ Export** → upload the `.json` to the folder on github.com (**Add file → Upload files**). Same file name = new version.
+- **See changes:** the app checks the folder on every page load (reload to check again). Each file is downloaded once per version and kept in the browser, so lessons still load offline or when GitHub is busy (the public API allows 60 checks an hour). A file that isn't a valid lesson shows a red warning with its name in the Rounds panel.
 - **Folder lessons are read-only in the app:** ✏️ Edit saves your own copy in that browser. Export and upload again to change them everywhere. To remove one, delete the file on GitHub.
 - The repo is public, so lessons (including photos uploaded in the editor) are public. Avoid photos of students.
 

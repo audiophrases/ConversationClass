@@ -7,12 +7,6 @@ const ROUNDS_FOLDER = { owner: 'audiophrases', repo: 'ConversationClass', branch
 const ROUNDS_CACHE_KEY = 'conversationClass.rounds';
 const GITHUB_REPO_API = `https://api.github.com/repos/${ROUNDS_FOLDER.owner}/${ROUNDS_FOLDER.repo}`;
 
-// The folder on github.com, or its "Upload files" page.
-function roundsFolderLink(upload = false) {
-  const { owner, repo, branch, path } = ROUNDS_FOLDER;
-  return `https://github.com/${owner}/${repo}/${upload ? 'upload' : 'tree'}/${branch}/${path}`;
-}
-
 function loadRoundsCache() {
   try {
     const data = JSON.parse(localStorage.getItem(ROUNDS_CACHE_KEY));
