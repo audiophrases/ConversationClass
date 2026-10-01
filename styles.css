@@ -424,6 +424,17 @@ pre {
   white-space: nowrap;
 }
 .round-count { font-weight: 700; color: var(--muted); font-size: clamp(0.95rem, 1.3vw, 1.5rem); }
+.preview-badge {
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: var(--warn);
+  color: #1f1300;
+  font-weight: 800;
+  font-size: clamp(0.85rem, 1.1vw, 1.2rem);
+  white-space: nowrap;
+}
+.preview-step { color: var(--muted); font-size: 0.95rem; white-space: nowrap; margin-right: 0.3rem; }
+.preview-step b { color: var(--ink); }
 .timer {
   font-size: clamp(2.4rem, 5.2vw, 6.5rem);
   font-weight: 800;
@@ -625,6 +636,8 @@ pre {
   z-index: 5;
 }
 .nudge.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+/* preview: the swap message sits low so the swapped jobs stay visible */
+.nudge.still { top: auto; bottom: 14%; }
 
 @keyframes pop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }

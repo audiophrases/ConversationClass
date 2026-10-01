@@ -30,6 +30,7 @@ let tickHandle = null;
 let spinHandle = null;
 let nudgeHandle = null;
 let draft = null; // session being edited
+let preview = null; // session being previewed (never saved)
 let wakeLock = null;
 
 // ---------- storage ----------
@@ -82,15 +83,25 @@ function liveClass() {
   return db.live && db.classes.find((c) => c.id === db.live.classId);
 }
 
+// Stand-in names so a session can be previewed before any students are added.
+const DEMO_STUDENTS = ['Alex', 'Sam', 'Noa', 'Leo', 'Mia', 'Hugo', 'Lucia', 'Dani', 'Irene', 'Marco', 'Sara', 'Pablo']
+  .map((name, i) => ({ id: `demo-${i}`, name, level: 'N', absent: false }));
+
+function findStudent(id) {
+  for (const cls of db.classes) {
+    const st = cls.students.find((s) => s.id === id);
+    if (st) return st;
+  }
+  return DEMO_STUDENTS.find((s) => s.id === id) || null;
+}
+
 function nameOf(id) {
-  const cls = liveClass() || ensureClass();
-  const st = cls.students.find((s) => s.id === id);
+  const st = findStudent(id);
   return st ? st.name : '?';
 }
 
 function levelOf(id) {
-  const cls = liveClass() || ensureClass();
-  const st = cls.students.find((s) => s.id === id);
+  const st = findStudent(id);
   return st ? st.level : 'N';
 }
 
@@ -204,6 +215,7 @@ const sfx = {
 function render() {
   document.documentElement.dataset.theme = db.settings.theme;
   if (view === 'live' && db.live) renderLive();
+  else if (view === 'preview' && preview) renderLive(previewStage());
   else renderSetup();
 }
 
@@ -279,6 +291,7 @@ function renderSetup() {
         <div class="row wrap">
           <button class="btn primary soft" data-action="openAi">✨ Create with AI</button>
           <button class="btn ghost small" data-action="openImport">📥 Import</button>
+          <button class="btn ghost small" data-action="openPreview" title="Step through every screen of this session">👁️ Preview</button>
           <button class="btn ghost small" data-action="openEditor">✏️ Edit</button>
           <button class="btn ghost small" data-action="exportSession">⬇️ Export</button>
           ${session.builtIn ? '' : '<button class="btn ghost small" data-action="deleteSession" title="Delete this session">🗑️</button>'}
@@ -363,7 +376,7 @@ function talkMain(round, L) {
     ? `<figure class="task-image">${img
       ? `<img src="${esc(img)}" alt="${esc(round.imageQuery || round.title)}" onerror="imageFailed()">`
       : '<div class="img-placeholder">🖼️ Loading picture…</div>'}
-      <button class="icon-btn reroll" data-action="rerollImage" title="Another picture">↻</button></figure>`
+      ${L.preview ? '' : '<button class="icon-btn reroll" data-action="rerollImage" title="Another picture">↻</button>'}</figure>`
     : '';
   return `
     <div class="task-head">
@@ -384,8 +397,7 @@ function talkMain(round, L) {
     </div>`;
 }
 
-function renderLive() {
-  const L = db.live;
+function renderLive(L = db.live) {
   const round = L.rounds[L.index];
   const type = ROUND_TYPES[round.type] || ROUND_TYPES.topic;
   const isLast = L.index >= L.rounds.length - 1;
@@ -412,7 +424,7 @@ function renderLive() {
       </div>`;
   } else if (L.phase === 'talk') {
     const paused = !L.timer.endAt;
-    timer = fmtTime(timerRemaining());
+    timer = fmtTime(L.preview ? L.timer.remaining : timerRemaining());
     controls = `
       ${L.pictureWaiting ? '<button class="btn primary" data-action="nextPicture" title="N">🖼️ Show next picture</button>' : ''}
       <button class="btn ghost" data-action="addMinute" data-d="-1" title="−1 minute (−)">−1</button>
@@ -447,29 +459,139 @@ function renderLive() {
     main = `<div class="center-stage">
         <div class="big-emoji">🎉</div>
         <h1 class="mission">Great speaking today!</h1>
-        <p class="report-sub">${L.rounds.length} rounds · ${Object.keys(L.reportCounts).length} students reported back</p>
+        <p class="report-sub">${L.rounds.length} rounds${L.preview ? '' : ` · ${Object.keys(L.reportCounts).length} students reported back`}</p>
       </div>`;
+  }
+
+  const P = L.preview;
+  if (P) {
+    timer = P.timer;
+    controls = `
+      <span class="preview-step"><b>${P.label}</b> ${preview.pos + 1}/${preview.steps.length}</span>
+      <button class="btn ghost" data-action="previewPrev" title="← (↑ previous round)" ${preview.pos ? '' : 'disabled'}>◀ Prev</button>
+      <button class="btn primary" data-action="previewNext" title="→ (↓ next round)" ${preview.pos < preview.steps.length - 1 ? '' : 'disabled'}>Next ▶</button>`;
   }
 
   $('#app').innerHTML = `
   <div class="stage phase-${L.phase} t-${round.type}">
     <header class="stage-bar">
       <div class="stage-left">
+        ${P ? '<span class="preview-badge">👁️ Preview</span>' : ''}
         <span class="type-chip t-${round.type}">${type.icon} ${type.name}</span>
         <span class="round-count">${L.index + 1}/${L.rounds.length}</span>
       </div>
-      <div class="timer ${L.phase === 'talk' && !L.timer.endAt ? 'paused' : ''}" id="timer">${timer}</div>
+      <div class="timer ${L.phase === 'talk' && !L.timer.endAt && !P ? 'paused' : ''}" id="timer">${timer}</div>
       <div class="stage-controls">${controls}
         <button class="icon-btn" data-action="fullscreen" title="Fullscreen (F)">⛶</button>
-        <button class="icon-btn" data-action="exitLive" title="Back to setup">✕</button>
+        <button class="icon-btn" data-action="${P ? 'exitPreview' : 'exitLive'}" title="Back to setup${P ? ' (Esc)' : ''}">✕</button>
       </div>
     </header>
-    <div class="progress"><div id="progressFill"></div></div>
+    <div class="progress"><div id="progressFill" ${P ? `style="width:${P.progress}%"` : ''}></div></div>
     <main class="stage-main">${main}</main>
     ${footer}
-    <div class="nudge" id="nudge"></div>
+    ${P && P.nudge ? `<div class="nudge show still" id="nudge">${esc(P.nudge)}</div>` : '<div class="nudge" id="nudge"></div>'}
   </div>`;
   tick();
+}
+
+// ---------- preview ----------
+
+// Every screen of a session, in class order. Nothing here is saved, timed or
+// recorded: groups are a sample, partner history and report counts are untouched.
+function previewSteps(rounds) {
+  const steps = [];
+  rounds.forEach((r, index) => {
+    steps.push({ index, phase: 'groups', label: 'Groups' });
+    steps.push({ index, phase: 'talk', label: 'Talk' });
+    steps.push({ index, phase: 'talk', swapped: true, label: 'Swap' });
+    if (r.type === 'picture') steps.push({ index, phase: 'talk', swapped: true, nextPicture: true, label: 'Next picture' });
+    if (db.settings.noteSeconds > 0) steps.push({ index, phase: 'note', label: 'Notebook' });
+    steps.push({ index, phase: 'report', label: 'Report back' });
+  });
+  steps.push({ index: rounds.length - 1, phase: 'end', label: 'End' });
+  return steps;
+}
+
+function openPreview() {
+  const session = currentSession();
+  const cls = ensureClass();
+  let students = cls.students.filter((s) => !s.absent);
+  if (students.length < 2) students = DEMO_STUDENTS;
+  const ids = students.map((s) => s.id);
+  const levels = Object.fromEntries(students.map((s) => [s.id, s.level]));
+  const rounds = clone(session.rounds);
+  // Sample groups that rotate like a real class, using a throwaway copy of the history.
+  const history = clone(cls.history || {});
+  const sizes = rounds.map((r, i) => sizeForRound(r, i));
+  const groups = rounds.map((r, i) => {
+    const { supportSlots } = ROUND_TYPES[r.type] || ROUND_TYPES.topic;
+    const g = Logic.makeGroups(ids, sizes[i], history, levels).map((x) => Logic.orderGroup(x, levels, supportSlots));
+    Logic.recordGroups(history, g);
+    return g;
+  });
+  preview = { rounds, sizes, groups, steps: previewSteps(rounds), pos: 0 };
+  view = 'preview';
+  render();
+  ensureImages(rounds).then((found) => { if (found && view === 'preview') render(); });
+}
+
+// The state renderLive() needs for the current preview step.
+function previewStage() {
+  const step = preview.steps[preview.pos];
+  const i = step.index;
+  const base = preview.rounds[i];
+  const rounds = preview.rounds.slice();
+  if (step.nextPicture) rounds[i] = { ...base, imageIdx: (base.imageIdx || 0) + 1 };
+  const total = db.settings.minutes * 60000;
+  const groups = preview.groups[i];
+  const g = groups[(i * 3) % groups.length];
+  const t = ROUND_TYPES[base.type] || ROUND_TYPES.topic;
+  const timers = { groups: total, talk: step.swapped ? total / 2 : total, note: db.settings.noteSeconds * 1000 };
+  return {
+    preview: {
+      label: step.label,
+      timer: step.phase in timers ? fmtTime(timers[step.phase]) : '',
+      progress: step.swapped ? 50 : 0,
+      nudge: step.swapped && !step.nextPicture ? t.swap : '',
+    },
+    rounds,
+    index: i,
+    phase: step.phase,
+    groups,
+    groupSize: preview.sizes[i],
+    swapped: !!step.swapped,
+    timer: { total, remaining: timers[step.phase] || total, endAt: null },
+    mission: db.settings.noteSeconds > 0 ? MISSIONS[i % MISSIONS.length] : '',
+    reporter: g[i % g.length],
+    reportCounts: {},
+  };
+}
+
+function previewGo(d) {
+  const pos = Math.max(0, Math.min(preview.steps.length - 1, preview.pos + d));
+  if (pos !== preview.pos) { preview.pos = pos; render(); }
+}
+
+// Jump to the first screen of the previous / next round (or to the end).
+function previewRound(d) {
+  const { steps } = preview;
+  const cur = steps[preview.pos];
+  const first = steps.findIndex((s) => s.index === cur.index);
+  let pos;
+  if (d > 0) {
+    pos = steps.findIndex((s, k) => k > preview.pos && (s.index > cur.index || s.phase === 'end'));
+  } else {
+    // Mid-round (or on the end screen): back to this round's start; else the round before.
+    pos = preview.pos > first ? first : steps.findIndex((s) => s.index === Math.max(0, cur.index - 1));
+  }
+  if (pos >= 0 && pos !== preview.pos) { preview.pos = pos; render(); }
+}
+
+function exitPreview() {
+  preview = null;
+  view = 'setup';
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  render();
 }
 
 function tick() {
@@ -719,9 +841,10 @@ function addMinute(d) {
 
 // Called from the <img onerror>: skip broken hotlinks to the next candidate.
 window.imageFailed = function imageFailed() {
-  const L = db.live;
-  if (!L) return;
-  const round = L.rounds[L.index];
+  const round = view === 'preview'
+    ? preview && preview.rounds[preview.steps[preview.pos].index]
+    : db.live && db.live.rounds[db.live.index];
+  if (!round) return;
   round.failures = (round.failures || 0) + 1;
   if (round.failures < imageCandidates(round).length) {
     round.imageIdx = (round.imageIdx || 0) + 1;
@@ -1104,6 +1227,10 @@ const actions = {
     save(); render();
   },
   nextPicture() { showNextPicture(); },
+  openPreview() { openPreview(); },
+  previewPrev() { previewGo(-1); },
+  previewNext() { previewGo(1); },
+  exitPreview() { exitPreview(); },
 };
 
 const changeHandlers = {
@@ -1198,7 +1325,22 @@ document.addEventListener('keydown', (e) => {
     actions.cycleStudent(e.target);
     return;
   }
-  if (view !== 'live' || !db.live || typing || document.querySelector('.modal-backdrop')) return;
+  if (typing || document.querySelector('.modal-backdrop')) return;
+
+  if (view === 'preview' && preview) {
+    const keys = {
+      ArrowRight: () => previewGo(1),
+      ArrowLeft: () => previewGo(-1),
+      ArrowDown: () => previewRound(1),
+      ArrowUp: () => previewRound(-1),
+      Escape: exitPreview,
+      f: toggleFullscreen,
+      F: toggleFullscreen,
+    };
+    if (keys[e.key]) { e.preventDefault(); keys[e.key](); }
+    return;
+  }
+  if (view !== 'live' || !db.live) return;
 
   const phase = db.live.phase;
   const primary = { groups: goTalk, talk: togglePause, note: goReport, report: nextRound, end: () => actions.finishLive() };

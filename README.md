@@ -27,6 +27,8 @@ Each round runs through these steps:
 
 Keyboard: `Space` = main action (start / pause / next), `→` = skip ahead, `+` / `−` = minute, `N` = show next picture, `F` = fullscreen.
 
+**👁️ Preview** (Rounds panel) steps through every screen of the session exactly as students will see it: groups, talk, swap, next picture, notebook, report back and the end screen. Use **◀ Prev / Next ▶** or `←` / `→`; `↑` / `↓` jump a whole round, `Esc` exits. Nothing runs or is saved: no timers or sounds, the groups are a sample (made-up names if the class list is empty), and partner history, report-back counts and any class in progress stay untouched.
+
 New groups keep Support students apart (two Support students only share a group when there are more of them than groups) and, within that rule, avoid previous partners. With an odd number of students there is one trio; trios and fours that don't divide evenly shrink by one (15 students in fours = 4, 4, 4, 3). The partner history is kept per class across lessons ("Reset partners" clears it). If the page is reloaded mid-class, a **Resume** banner appears.
 
 ## Who speaks
