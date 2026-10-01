@@ -1,4 +1,4 @@
-/* global ROUND_TYPES, MISSIONS, BUILT_IN_SESSIONS, Logic, searchImages, fileToDataUrl */
+/* global ROUND_TYPES, BUILT_IN_SESSIONS, Logic, searchImages, fileToDataUrl */
 
 const STORE_KEY = 'talkRounds.v1';
 const COURSES = ['1º ESO', '2º ESO', '3º ESO', '4º ESO', '1º Bachillerato', '2º Bachillerato'];
@@ -561,7 +561,7 @@ function previewStage() {
     groupSize: preview.sizes[i],
     swapped: !!step.swapped,
     timer: { total, remaining: timers[step.phase] || total, endAt: null },
-    mission: db.settings.noteSeconds > 0 ? MISSIONS[i % MISSIONS.length] : '',
+    mission: t.notebook,
     reporter: g[i % g.length],
     reportCounts: {},
   };
@@ -744,8 +744,7 @@ function timeUp() {
   L.timer.endAt = null;
   sfx.bell();
   const secs = db.settings.noteSeconds;
-  const options = MISSIONS.filter((m) => m !== L.mission);
-  L.mission = options[Math.floor(Math.random() * options.length)];
+  L.mission = (ROUND_TYPES[L.rounds[L.index].type] || ROUND_TYPES.topic).notebook;
   if (secs > 0) {
     L.phase = 'note';
     L.noteEnd = Date.now() + secs * 1000;

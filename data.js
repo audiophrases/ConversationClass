@@ -1,4 +1,4 @@
-// Static content: round types, notebook missions and built-in session packs.
+// Static content: round types and built-in session packs.
 
 // Every round works the same way: A (first name in the group) starts, and at
 // halfway a chime says "swap". `roles` are the A / B / C jobs shown on the
@@ -7,12 +7,14 @@
 // D does the same job as C. `swaps: false` keeps the jobs and shows the halfway
 // message as the next step instead.
 // `supportSlots`: seats Support students take first (default B, C, D, then A).
+// `notebook`: the one-line note students write after the round.
 const ROUND_TYPES = {
   picture: {
     icon: '🖼️',
     name: 'Picture',
     roles: ['👀 Describe it', '🙈 Don\'t look! Ask questions', '🙈 Don\'t look! Ask questions'],
     swap: '🔄 Swap! Check the picture, then change places',
+    notebook: 'Write ONE thing your partner described.',
   },
   topic: {
     icon: '💬',
@@ -20,18 +22,21 @@ const ROUND_TYPES = {
     roles: ['🎤 Ask + “Why?”', '💬 Answer', '💬 Answer too'],
     swap: '🔄 Swap! No “me too” 😉',
     supportSlots: [0, 2, 3, 1], // asking first means hearing an answer before giving yours
+    notebook: 'Write ONE thing your partner said.',
   },
   roleplay: {
     icon: '🎭',
     name: 'Role play',
     roles: ['🎭 Start the scene', '🎭 Answer', '🎬 Director: add a problem!'],
     swap: '🔄 Swap roles! Play it again',
+    notebook: 'Write ONE useful phrase from your scene.',
   },
   defend: {
     icon: '⚖️',
     name: 'Debate',
     roles: ['👈 First option', '👉 Second option', '⚖️ Judge: who wins?'],
     swap: '🔄 Swap sides!',
+    notebook: 'Write your partner\'s best argument.',
   },
   problem: {
     icon: '🧩',
@@ -39,25 +44,16 @@ const ROUND_TYPES = {
     roles: ['💡 First idea', '💡 A different idea', '💡 Another idea'],
     swap: '🤝 Now agree on ONE idea',
     swaps: false,
+    notebook: 'Write the idea you agreed on.',
   },
   creative: {
     icon: '✨',
     name: 'Creative challenge',
     roles: ['✨ Start', '➕ Add more', '➕ Add more'],
     swap: '🔄 Swap! Add a twist 🌀',
+    notebook: 'Write your partner\'s best idea.',
   },
 };
-
-// One of these is picked at random for the notebook step after each round.
-const MISSIONS = [
-  'Write ONE thing your partner said.',
-  'Write ONE new word or phrase you heard.',
-  'Write your partner\'s best idea.',
-  'Write ONE question your partner asked you.',
-  'Write ONE thing you agreed on.',
-  'Write ONE thing you disagreed about.',
-  'Write ONE thing that surprised you.',
-];
 
 const BUILT_IN_SESSIONS = [
   {

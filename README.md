@@ -22,7 +22,7 @@ Each round runs through these steps:
 | --- | --- | --- |
 | Groups | Numbered groups; each name has a seat letter **A** / **B** / **C** / **D** (no level marks) | 🔀 Shuffle, Pairs/Trios/Fours, ±1 min, ▶ Start |
 | Talk | Task title, what each seat does, picture, boxes **1 Support** and **2 Challenge**, big timer, groups strip; halfway a chime says **swap** | 🖼️ Show next picture (picture rounds, after the swap), −1 / +1 min, Pause, ⏹ Stop round |
-| Notebook | One random one-line mission ("Write ONE thing your partner said") with a short countdown | Done → |
+| Notebook | A one-line note that fits the round type (Picture: "Write ONE thing your partner described.", Debate: "Write your partner's best argument.", ...) with a short countdown | Done → |
 | Report back | Name roll picks one student (fair rotation, never the same person twice in a row) and names their partner | 🎲 Someone else, Next round → |
 
 Keyboard: `Space` = main action (start / pause / next), `→` = skip ahead, `+` / `−` = minute, `N` = show next picture, `F` = fullscreen.
@@ -85,6 +85,6 @@ Picture rounds get their picture from `imageQuery`, using the same sources as Pi
 - `index.html`: the shell
 - `app.js`: UI (setup, live stage, AI/import, editor)
 - `logic.js`: pure logic (grouping, report-back picking, AI prompt, JSON import)
-- `data.js`: round types, notebook missions, starter packs
+- `data.js`: round types (jobs, swap message, notebook note), starter packs
 - `images.js`: image search and upload resizing
 - `tests/logic.test.js`: `node tests/logic.test.js`
