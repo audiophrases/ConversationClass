@@ -1,4 +1,5 @@
-/* global ROUND_TYPES, BUILT_IN_SESSIONS, Logic, searchImages, fileToDataUrl */
+/* global ROUND_TYPES, Logic, searchImages, fileToDataUrl,
+   roundsFolderLink, loadRoundsCache, saveRoundsCache, fetchRoundsFolder */
 
 const STORE_KEY = 'talkRounds.v1';
 const COURSES = ['1º ESO', '2º ESO', '3º ESO', '4º ESO', '1º Bachillerato', '2º Bachillerato'];
@@ -15,7 +16,7 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({
 
 const DEFAULT_SETTINGS = {
   classId: null,
-  sessionId: BUILT_IN_SESSIONS[0].id,
+  sessionId: null,
   minutes: 5,
   groupMode: 'pairs',
   noteSeconds: 60,
@@ -31,6 +32,8 @@ let spinHandle = null;
 let nudgeHandle = null;
 let draft = null; // session being edited
 let preview = null; // session being previewed (never saved)
+let roundsFolder = loadRoundsCache(); // lessons from the GitHub rounds/ folder
+let roundsStatus = ''; // '', 'checking' or why the folder couldn't be checked
 let wakeLock = null;
 
 // ---------- storage ----------
@@ -70,8 +73,47 @@ function ensureClass() {
   return cls;
 }
 
+// Lessons from the GitHub rounds/ folder: read-only here (editing saves a copy).
+function folderSessions() {
+  return roundsFolder.files.filter((f) => f.session).map((f) => ({ ...f.session, id: `gh:${f.path}`, fromGitHub: f.path }));
+}
+
 function allSessions() {
-  return [...db.sessions, ...BUILT_IN_SESSIONS.filter((b) => !db.sessions.some((s) => s.id === b.id))];
+  return [...db.sessions, ...folderSessions()];
+}
+
+function parseLesson(text, name) {
+  const data = Logic.extractJson(text);
+  const session = Logic.normalizeSession(data);
+  if (!data || !data.title) session.title = name.replace(/\.json$/i, '').replace(/[-_]+/g, ' ');
+  return session;
+}
+
+async function refreshRoundsFolder() {
+  roundsStatus = 'checking';
+  if (view === 'setup') render();
+  try {
+    roundsFolder = await fetchRoundsFolder(roundsFolder, parseLesson);
+    saveRoundsCache(roundsFolder);
+    roundsStatus = '';
+  } catch (err) {
+    roundsStatus = err.message || 'offline';
+  }
+  if (view === 'setup') render();
+  const session = currentSession();
+  if (session) ensureImages(session.rounds).then((found) => { if (found && view === 'setup') render(); });
+}
+
+function roundsFolderStatus() {
+  const n = folderSessions().length;
+  const broken = roundsFolder.files.filter((f) => f.error);
+  let state = `${n} lesson${n === 1 ? '' : 's'}`;
+  if (roundsStatus === 'checking') state = 'checking…';
+  else if (roundsStatus) state = `couldn't check: ${esc(roundsStatus)}${n ? ` (showing the ${n} saved here)` : ''}`;
+  return `<p class="folder-status">☁️ <a href="${roundsFolderLink()}" target="_blank" rel="noopener">GitHub rounds folder</a>: ${state}
+    · <button class="link-btn" data-action="refreshRounds" title="Check GitHub for new or changed lessons">↻ Refresh</button>
+    · <a href="${roundsFolderLink(true)}" target="_blank" rel="noopener" title="Upload exported .json files (sign in to GitHub)">⬆️ Upload</a></p>
+    ${broken.map((f) => `<p class="folder-error">⚠️ ${esc(f.name)}: ${esc(f.error)}</p>`).join('')}`;
 }
 
 function currentSession() {
@@ -285,18 +327,21 @@ function renderSetup() {
 
       <section class="panel">
         <h2><span class="step">2</span> Rounds</h2>
-        <select data-change="selectSession" aria-label="Session">
-          ${allSessions().map((x) => `<option value="${x.id}" ${x.id === session.id ? 'selected' : ''}>${esc(x.title)}${x.level ? ` (${esc(x.level)})` : ''}</option>`).join('')}
-        </select>
+        ${session ? `<select data-change="selectSession" aria-label="Session">
+          ${[['In this browser', db.sessions], ['☁️ GitHub rounds folder', folderSessions()]].filter(([, list]) => list.length)
+            .map(([label, list]) => `<optgroup label="${label}">${list.map((x) => `<option value="${esc(x.id)}" ${x.id === session.id ? 'selected' : ''}>${esc(x.title)}${x.level ? ` (${esc(x.level)})` : ''}</option>`).join('')}</optgroup>`).join('')}
+        </select>` : '<p class="empty">No lessons yet. Create one with AI, import a .json file, start a new one, or add files to the GitHub rounds folder.</p>'}
+        ${roundsFolderStatus()}
         <div class="row wrap">
           <button class="btn primary soft" data-action="openAi">✨ Create with AI</button>
           <button class="btn ghost small" data-action="openImport">📥 Import</button>
-          <button class="btn ghost small" data-action="openPreview" title="Step through every screen of this session">👁️ Preview</button>
+          ${session ? `<button class="btn ghost small" data-action="openPreview" title="Step through every screen of this session">👁️ Preview</button>
           <button class="btn ghost small" data-action="openEditor">✏️ Edit</button>
-          <button class="btn ghost small" data-action="exportSession">⬇️ Export</button>
-          ${session.builtIn ? '' : '<button class="btn ghost small" data-action="deleteSession" title="Delete this session">🗑️</button>'}
+          <button class="btn ghost small" data-action="exportSession" title="Download as .json (to upload to the GitHub rounds folder)">⬇️ Export</button>
+          ${session.fromGitHub ? '' : '<button class="btn ghost small" data-action="deleteSession" title="Delete this session">🗑️</button>'}`
+            : '<button class="btn ghost small" data-action="openEditor">✏️ New</button>'}
         </div>
-        <ol class="round-list">${session.rounds.map(roundRow).join('')}</ol>
+        ${session ? `<ol class="round-list">${session.rounds.map(roundRow).join('')}</ol>` : ''}
       </section>
 
       <section class="panel start-panel">
@@ -317,8 +362,8 @@ function renderSetup() {
         <div class="field"><span>Sound</span>
           <div class="seg"><button class="${s.sound ? 'on' : ''}" data-action="sound" data-v="1">On</button><button class="${s.sound ? '' : 'on'}" data-action="sound" data-v="0">Off</button></div>
         </div>
-        <button class="btn start" data-action="start" ${present.length < 2 ? 'disabled' : ''}>▶ Start class</button>
-        <p class="muted small center">${present.length < 2 ? 'Add at least 2 students to start.' : `${present.length} students · ${session.rounds.length} rounds`}</p>
+        <button class="btn start" data-action="start" ${present.length < 2 || !session ? 'disabled' : ''}>▶ Start class</button>
+        <p class="muted small center">${!session ? 'Choose or create a lesson to start.' : (present.length < 2 ? 'Add at least 2 students to start.' : `${present.length} students · ${session.rounds.length} rounds`)}</p>
         <p class="muted small keys"><kbd>Space</kbd> start / pause · <kbd>→</kbd> next · <kbd>+</kbd><kbd>−</kbd> minute · <kbd>F</kbd> fullscreen</p>
       </section>
     </div>
@@ -514,6 +559,7 @@ function previewSteps(rounds) {
 
 function openPreview() {
   const session = currentSession();
+  if (!session) return;
   const cls = ensureClass();
   let students = cls.students.filter((s) => !s.absent);
   if (students.length < 2) students = DEMO_STUDENTS;
@@ -693,6 +739,7 @@ function prepareRound() {
 function startClass() {
   const cls = ensureClass();
   const session = currentSession();
+  if (!session) { toast('Choose or create a lesson first.'); return; }
   if (cls.students.filter((s) => !s.absent).length < 2) { toast('Add at least 2 students first.'); return; }
   db.live = {
     classId: cls.id,
@@ -985,7 +1032,7 @@ function editorHtml() {
   return `
   <header class="modal-head"><h2>✏️ Edit rounds</h2><button class="icon-btn" data-action="closeModal" aria-label="Close">✕</button></header>
   <div class="modal-body">
-    ${draft.builtIn ? '<p class="muted small">This is a starter pack: saving creates your own copy.</p>' : ''}
+    ${draft.fromGitHub ? '<p class="muted small">This lesson comes from the GitHub rounds folder: saving keeps your own copy in this browser. To change it on every device, ⬇️ Export it and upload it to the folder again.</p>' : ''}
     <div class="row">
       <label class="field grow"><span>Session title</span><input data-input="session" data-f="title" value="${esc(draft.title)}"></label>
       <label class="field narrow"><span>Level</span><input data-input="session" data-f="level" value="${esc(draft.level || '')}"></label>
@@ -1053,12 +1100,12 @@ function saveDraft() {
   const rounds = draft.rounds.map(Logic.normalizeRound).filter(Boolean);
   if (!rounds.length) { toast('Add at least one round with some text.'); return; }
   const session = {
-    id: draft.builtIn ? uid() : draft.id,
+    id: draft.fromGitHub ? uid() : draft.id,
     title: String(draft.title || '').trim() || 'My session',
     level: String(draft.level || '').trim(),
     rounds,
   };
-  if (draft.builtIn && session.title === draft.title) session.title = `${session.title} (my copy)`;
+  if (draft.fromGitHub && session.title === draft.title) session.title = `${session.title} (my copy)`;
   const idx = db.sessions.findIndex((s) => s.id === session.id);
   if (idx >= 0) db.sessions[idx] = session;
   else db.sessions.unshift(session);
@@ -1144,20 +1191,22 @@ const actions = {
   },
   importPaste() { importText($('#aiPaste').value); },
   openEditor() {
-    draft = clone(currentSession());
+    const session = currentSession();
+    draft = session ? clone(session) : { id: uid(), title: '', level: '', rounds: [{ type: 'topic', title: '', support: '', challenge: '', words: [] }] };
     openModal(editorHtml(), 'wide editor');
   },
   exportSession() {
     const s = currentSession();
+    if (!s) return;
     const data = { title: s.title, level: s.level, rounds: s.rounds };
     const slug = s.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'session';
     download(`${slug}.json`, JSON.stringify(data, null, 2));
   },
   deleteSession() {
     const s = currentSession();
-    if (s.builtIn || !window.confirm(`Delete "${s.title}"?`)) return;
+    if (!s || s.fromGitHub || !window.confirm(`Delete "${s.title}"?`)) return;
     db.sessions = db.sessions.filter((x) => x.id !== s.id);
-    db.settings.sessionId = allSessions()[0].id;
+    db.settings.sessionId = (allSessions()[0] || {}).id || null;
     save(); render();
   },
 
@@ -1226,6 +1275,7 @@ const actions = {
     save(); render();
   },
   nextPicture() { showNextPicture(); },
+  refreshRounds() { refreshRoundsFolder(); },
   openPreview() { openPreview(); },
   previewPrev() { previewGo(-1); },
   previewNext() { previewGo(1); },
@@ -1357,4 +1407,4 @@ document.addEventListener('visibilitychange', () => {
 });
 
 render();
-ensureImages(currentSession().rounds).then((found) => { if (found && view === 'setup') render(); });
+refreshRoundsFolder(); // also looks up pictures for the selected lesson

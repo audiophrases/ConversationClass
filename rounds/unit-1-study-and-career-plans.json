@@ -1,0 +1,87 @@
+{
+  "title": "Unit 1 · Study and career plans",
+  "level": "4º ESO",
+  "rounds": [
+    {
+      "type": "topic",
+      "title": "My Future Plans",
+      "support": "What are you going to study next year? What job will you have in the future?",
+      "challenge": "By 2035, what will you have achieved? What will you be doing on a normal Tuesday?",
+      "words": [
+        "Next year, I am going to...",
+        "I think I will...",
+        "By 2035, I will have..."
+      ],
+      "group": 2
+    },
+    {
+      "type": "defend",
+      "title": "University vs Getting a Job",
+      "support": "Defend your side. Why is your option good? What will you learn?",
+      "challenge": "Defend your side. Answer your partner's arguments. How will this choice change your future?",
+      "words": [
+        "My option is better because...",
+        "You will earn money...",
+        "A degree will help you..."
+      ],
+      "group": 2,
+      "options": [
+        "Going to University",
+        "Starting work at 18"
+      ]
+    },
+    {
+      "type": "picture",
+      "title": "A Modern Job",
+      "support": "Describe the picture to your partner. What is his job? What is he going to do next?",
+      "challenge": "What skills will he need? Will AI have replaced this job by 2040? Discuss together.",
+      "words": [
+        "He is looking at...",
+        "In this job, you need...",
+        "AI won't replace him because..."
+      ],
+      "group": 2,
+      "imageQuery": "young man programming computer office"
+    },
+    {
+      "type": "roleplay",
+      "title": "The Careers Advisor",
+      "support": "Have a meeting. The advisor asks questions to help the confused student choose a future path.",
+      "challenge": "Discuss long-term goals. Set specific career milestones using future continuous and future perfect tenses.",
+      "words": [
+        "What subjects do you like?",
+        "I am planning to...",
+        "Will you be studying..."
+      ],
+      "group": 2,
+      "roles": [
+        "Careers Advisor",
+        "Confused Student"
+      ]
+    },
+    {
+      "type": "problem",
+      "title": "The Gap Year",
+      "support": "You want to take a gap year before studying. Suggest different ideas. Agree on one plan.",
+      "challenge": "How will you fund it? How will it benefit your future career? Negotiate a realistic plan.",
+      "words": [
+        "We could travel to...",
+        "I'm going to work in...",
+        "That's a great idea!"
+      ],
+      "group": 2
+    },
+    {
+      "type": "creative",
+      "title": "Jobs in 2050",
+      "support": "Invent a new job for the year 2050. Take turns adding details. What will people do?",
+      "challenge": "Describe this futuristic career. What global problems will they be solving? How will technology have changed?",
+      "words": [
+        "The job is called...",
+        "People will work with...",
+        "They will be using..."
+      ],
+      "group": 2
+    }
+  ]
+}

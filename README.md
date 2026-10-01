@@ -6,15 +6,26 @@ A projector-first speaking app for ESL conversation classes. One screen runs the
 
 Open `index.html` in a browser. There is no build step. It also works on GitHub Pages: deploy from the branch root.
 
-Data (classes, sessions, the class in progress) is saved in the browser's `localStorage`, so use the same browser on the classroom computer.
+Data (classes, sessions, the class in progress) is saved in the browser's `localStorage`, so use the same browser on the classroom computer. To use the same lessons on every device, put them in the GitHub rounds folder (below).
+
+## Lessons on every device: the `rounds/` folder
+
+Any lesson `.json` file in this repo's [`rounds/`](rounds/) folder appears in the lesson menu under **☁️ GitHub rounds folder**, on every device and browser, with no login or token. Only lessons are shared: class lists, student names, level marks, partner history and settings stay in each browser.
+
+- **Add or update a lesson:** pick it in the app → **⬇️ Export** → upload the `.json` to the folder on github.com (**⬆️ Upload** next to the folder status opens the upload page). Same file name = new version.
+- **See changes:** the app checks the folder on every page load; **↻ Refresh** checks again. Each file is downloaded once per version and kept in the browser, so lessons still load offline or when GitHub is busy (the public API allows 60 checks an hour).
+- **Folder lessons are read-only in the app:** ✏️ Edit saves your own copy in that browser. Export and upload again to change them everywhere. To remove one, delete the file on GitHub.
+- The repo is public, so lessons (including photos uploaded in the editor) are public. Avoid photos of students.
+
+The folder is set in `github.js` (`ROUNDS_FOLDER`).
 
 ## Class flow
 
 1. **Class**: paste names (one per line; add `*` for Challenge, e.g. `Maria*`, or `+` for Support, e.g. `Leo+`; no mark = neutral). Tap a name to cycle **neutral → + Support → ★ Challenge → Absent**. Level marks are only shown on this setup screen, never on the projector.
-2. **Rounds**: pick a session (two starter packs are included), create one with AI, or import JSON.
+2. **Rounds**: pick a lesson (yours or one from the GitHub rounds folder), create one with AI, import JSON or start a new one.
 3. **Start**: set minutes per round (default 5), default groups (pairs / trios / mix), notebook time and sound.
 
-**Group size per round.** Each round can have its own size, pairs, trios or fours: set it with the 👥 menu in **✏️ Edit** (👥 Default follows the Start panel), or let the AI choose. The round list shows each round's size, e.g. *Debate · Trios*. The starter packs run debates in trios (C judges) and problem solving in fours.
+**Group size per round.** Each round can have its own size, pairs, trios or fours: set it with the 👥 menu in **✏️ Edit** (👥 Default follows the Start panel), or let the AI choose. The round list shows each round's size, e.g. *Debate · Trios*.
 
 Each round runs through these steps:
 
@@ -85,6 +96,8 @@ Picture rounds get their picture from `imageQuery`, using the same sources as Pi
 - `index.html`: the shell
 - `app.js`: UI (setup, live stage, AI/import, editor)
 - `logic.js`: pure logic (grouping, report-back picking, AI prompt, JSON import)
-- `data.js`: round types (jobs, swap message, notebook note), starter packs
+- `data.js`: round types (jobs, swap message, notebook note)
 - `images.js`: image search and upload resizing
+- `github.js`: reads lessons from the `rounds/` folder (public GitHub API, cached per file version)
+- `rounds/`: shared lessons, one `.json` per lesson
 - `tests/logic.test.js`: `node tests/logic.test.js`
