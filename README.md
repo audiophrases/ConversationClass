@@ -21,7 +21,7 @@ The folder is set in `github.js` (`ROUNDS_FOLDER`).
 
 ## Class flow
 
-1. **Class**: paste names (one per line; add `*` for Challenge, e.g. `Maria*`, or `+` for Support, e.g. `Leo+`; no mark = neutral). Tap a name to cycle **neutral → + Support → ★ Challenge → Absent**. Level marks are only shown on this setup screen, never on the projector.
+1. **Class**: paste names (one per line; add `*` for Spark, e.g. `Maria*`, or `+` for Support, e.g. `Leo+`; no mark = neutral). Tap a name to cycle **neutral → + Support → ⚡ Spark → Absent**. A **Spark** is someone fairly fluent who talks with anyone and leads in a positive way; mark at least as many Sparks as Support students (the class panel warns you when there are fewer). Level marks are only shown on this setup screen, never on the projector.
 2. **Rounds**: pick a lesson (yours or one from the GitHub rounds folder), create one with AI, import JSON or start a new one.
 3. **Start**: set minutes per round (default 5), default groups (pairs / trios / mix), notebook time and sound.
 
@@ -40,7 +40,7 @@ Keyboard: `Space` = main action (start / pause / next), `→` = skip ahead, `+` 
 
 **👁️ Preview** (Rounds panel) steps through every screen of the session exactly as students will see it: groups, talk, swap, next picture, notebook, report back and the end screen. Use **◀ Prev / Next ▶** or `←` / `→`; `↑` / `↓` jump a whole round, `Esc` exits. Nothing runs or is saved: no timers or sounds, the groups are a sample (made-up names if the class list is empty), and partner history, report-back counts and any class in progress stay untouched.
 
-New groups keep Support students apart (two Support students only share a group when there are more of them than groups) and, within that rule, avoid previous partners. With an odd number of students there is one trio; trios and fours that don't divide evenly shrink by one (15 students in fours = 4, 4, 4, 3). The partner history is kept per class across lessons ("Reset partners" clears it). If the page is reloaded mid-class, a **Resume** banner appears.
+New groups follow three rules, in this order: keep Support students apart (two only share a group when there are more of them than groups); give every Support student a ⚡ Spark in their group (as far as there are Sparks); then avoid previous partners. With an odd number of students there is one trio; trios and fours that don't divide evenly shrink by one (15 students in fours = 4, 4, 4, 3). The partner history is kept per class across lessons ("Reset partners" clears it). If the page is reloaded mid-class, a **Resume** banner appears.
 
 ## Who speaks
 
@@ -57,7 +57,7 @@ One rule for every round: **A starts, and the halfway chime means swap.** Partne
 
 Pairs start with box **1** (`support`) and move to box **2** (`challenge`) when it feels easy. Every round is **one task with two depths**: `support` (A1–A2, concrete) and `challenge` (B2–C1, opinion / speculation / persuasion).
 
-Seat letters also carry the hidden level help: Support students get the seat that goes second (B; in topic rounds A, because asking first means hearing an answer before giving yours), so they always hear a partner first. Nobody else sees why.
+Seat letters also carry the hidden level help: Support students get the seat that goes second (B; in topic rounds A, because asking first means hearing an answer before giving yours), so they always hear a partner first, and the Spark gets the seat that goes first, so they set the pace. Nobody else sees why.
 
 ## AI content workflow
 

@@ -41,10 +41,16 @@ function loadDb() {
   let data = {};
   try { data = JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { data = {}; }
   const classes = Array.isArray(data.classes) ? data.classes : [];
-  // v1 had only Support ('S', the default) and Challenge: unmarked students become neutral.
-  if (!data.version) classes.forEach((c) => (c.students || []).forEach((st) => { if (st.level !== 'C') st.level = 'N'; }));
+  // Level codes: N neutral, S Support, L leader (shown as ⚡ Spark).
+  // v1 had only Support ('S', the default) and Challenge ('C'): unmarked students
+  // became neutral. v3 turned Challenge into the leader level.
+  const version = data.version || 1;
+  classes.forEach((c) => (c.students || []).forEach((st) => {
+    if (version < 2 && st.level !== 'C') st.level = 'N';
+    if (version < 3 && st.level === 'C') st.level = 'L';
+  }));
   return {
-    version: 2,
+    version: 3,
     classes,
     sessions: Array.isArray(data.sessions) ? data.sessions : [],
     imageCache: data.imageCache && typeof data.imageCache === 'object' ? data.imageCache : {},
@@ -139,8 +145,8 @@ function levelOf(id) {
   return st ? st.level : 'N';
 }
 
-const LEVEL_NAMES = { S: 'Support', C: 'Challenge', N: 'No level' };
-const LEVEL_MARKS = { S: '+', C: '★', N: '' };
+const LEVEL_NAMES = { S: 'Support', L: 'Spark (fluent, talks with anyone, positive leader)', N: 'No level' };
+const LEVEL_MARKS = { S: '+', L: '⚡', N: '' };
 
 function imageCandidates(round) {
   const list = [round.image, ...(db.imageCache[round.imageQuery] || [])].filter(Boolean);
@@ -278,7 +284,7 @@ function renderSetup() {
   const session = currentSession();
   const s = db.settings;
   const present = cls.students.filter((st) => !st.absent);
-  const nC = present.filter((st) => st.level === 'C').length;
+  const nL = present.filter((st) => st.level === 'L').length;
   const nS = present.filter((st) => st.level === 'S').length;
   const live = db.live;
 
@@ -306,10 +312,11 @@ function renderSetup() {
           <button class="btn ghost small" data-action="renameClass" title="Rename class">✏️</button>
           <button class="btn ghost small" data-action="deleteClass" title="Delete class">🗑️</button>
         </div>
-        <p class="legend">Tap a name: no mark → <b class="c-S">+</b> Support → <b class="c-C">★</b> Challenge → Absent. Only you see these; Support students are kept apart when pairing.</p>
+        <p class="legend">Tap a name: no mark → <b class="c-S">+</b> Support → <b class="c-L">⚡</b> Spark → Absent. Only you see these. Each Support student is paired with a Spark (fluent, talks with anyone, positive leader), never with another Support student.</p>
         <div class="chips">${cls.students.map(studentChip).join('') || '<p class="empty">No students yet. Paste your list below 👇</p>'}</div>
-        ${cls.students.length ? `<p class="stats"><b>${present.length}</b> present · <span class="c-S">${nS} support</span> · <span class="c-C">${nC} challenge</span></p>` : ''}
-        <textarea id="namesInput" rows="3" placeholder="Paste names, one per line.&#10;Add * for Challenge (Maria*), + for Support (Leo+)"></textarea>
+        ${cls.students.length ? `<p class="stats"><b>${present.length}</b> present · <span class="c-S">${nS} support</span> · <span class="c-L">${nL} spark</span></p>
+          ${nS > nL ? `<p class="stats warn">⚠️ ${nS - nL} Support student${nS - nL === 1 ? '' : 's'} will work without a Spark: mark ${nS - nL} more ⚡ to cover everyone.</p>` : ''}` : ''}
+        <textarea id="namesInput" rows="3" placeholder="Paste names, one per line.&#10;Add * for Spark (Maria*), + for Support (Leo+)"></textarea>
         <div class="row wrap">
           <button class="btn" data-action="addNames">➕ Add names</button>
           <button class="btn ghost small" data-action="allPresent">Everyone present</button>
@@ -1118,8 +1125,8 @@ const actions = {
     const cls = ensureClass();
     const st = cls.students.find((s) => s.id === el.dataset.id);
     if (!st) return;
-    if (st.absent) { st.absent = false; st.level = 'N'; } else if (st.level === 'S') st.level = 'C';
-    else if (st.level === 'C') st.absent = true;
+    if (st.absent) { st.absent = false; st.level = 'N'; } else if (st.level === 'S') st.level = 'L';
+    else if (st.level === 'L') st.absent = true;
     else st.level = 'S';
     save(); render();
   },
@@ -1133,9 +1140,9 @@ const actions = {
     const names = $('#namesInput').value.split(/[\n,;]+/).map((n) => n.trim()).filter(Boolean);
     if (!names.length) { toast('Type or paste some names first.'); return; }
     names.forEach((raw) => {
-      const mark = (raw.match(/[*+★]+$/) || [''])[0];
+      const mark = (raw.match(/[*+★⚡\uFE0F]+$/u) || [''])[0]; // phones type ⚡ followed by an invisible \uFE0F
       const name = raw.slice(0, raw.length - mark.length).trim();
-      const level = /[*★]/.test(mark) ? 'C' : (mark ? 'S' : 'N');
+      const level = /[*★⚡]/u.test(mark) ? 'L' : (mark ? 'S' : 'N');
       if (name) cls.students.push({ id: uid(), name, level, absent: false });
     });
     $('#namesInput').value = '';

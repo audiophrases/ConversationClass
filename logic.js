@@ -28,11 +28,14 @@
     return sizes;
   }
 
-  // Cost of one group: repeated partners (history maps pairKey -> times together,
-  // squared so repeats of repeats hurt more) plus a huge penalty for every
-  // Support+Support pairing, so that only happens when it can't be avoided.
+  // Cost of one group, in order of importance:
+  // 1. a huge penalty for every Support+Support pairing (only when unavoidable),
+  // 2. a big penalty for every Support student without a leader in the group,
+  // 3. repeated partners (history maps pairKey -> times together, squared so
+  //    repeats of repeats hurt more).
   const SUPPORT_PAIR_COST = 1e6;
-  function groupCost(g, history, isSupport) {
+  const NO_LEADER_COST = 1e4;
+  function groupCost(g, history, isSupport, isLeader) {
     let cost = 0;
     for (let i = 0; i < g.length; i += 1) {
       for (let j = i + 1; j < g.length; j += 1) {
@@ -41,38 +44,45 @@
         if (isSupport(g[i]) && isSupport(g[j])) cost += SUPPORT_PAIR_COST;
       }
     }
+    if (!g.some(isLeader)) cost += NO_LEADER_COST * g.filter(isSupport).length;
     return cost;
   }
 
-  // Random groups that keep Support students apart and avoid previous partners.
-  // Each try deals Support students out one per group (so they only double up
-  // when there are more of them than groups), fills the rest at random, then
-  // swaps students between groups while that lowers the cost. Best try wins.
-  // levels maps id -> 'S' (Support) | 'C' (Challenge) | anything else (neutral).
+  // Random groups that keep Support students apart, give each of them a leader
+  // when there are enough, and avoid previous partners. Each try deals Support
+  // students out one per group (so they only double up when there are more of
+  // them than groups), then leaders to those groups first, then everyone else;
+  // then it swaps students between groups while that lowers the cost. Best try wins.
+  // levels maps id -> 'S' (Support) | 'L' (leader: the teacher's ⚡ Spark) | anything else (neutral).
   function makeGroups(ids, size, history = {}, levels = {}, tries = 40, rand = Math.random) {
     const sizes = groupSizes(ids.length, size);
     if (!sizes.length) return [];
     const isSupport = (id) => levels[id] === 'S';
+    const isLeader = (id) => levels[id] === 'L';
     let best = null;
     let bestScore = Infinity;
     for (let t = 0; t < tries; t += 1) {
       const groups = sizes.map(() => []);
-      const supports = shuffle(ids.filter(isSupport), rand);
-      const others = shuffle(ids.filter((id) => !isSupport(id)), rand);
+      const room = (g) => groups[g].length < sizes[g];
+      const has = (g, test) => groups[g].some(test);
       const order = shuffle(sizes.map((_, i) => i), rand);
       let k = 0;
-      supports.forEach((id) => {
-        while (groups[order[k % order.length]].length >= sizes[order[k % order.length]]) k += 1;
+      shuffle(ids.filter(isSupport), rand).forEach((id) => {
+        while (!room(order[k % order.length])) k += 1;
         groups[order[k % order.length]].push(id);
         k += 1;
       });
-      let gi = 0;
-      others.forEach((id) => {
-        while (groups[gi].length >= sizes[gi]) gi += 1;
-        groups[gi].push(id);
+      shuffle(ids.filter(isLeader), rand).forEach((id) => {
+        const g = order.find((x) => room(x) && has(x, isSupport) && !has(x, isLeader))
+          ?? order.find((x) => room(x) && !has(x, isLeader))
+          ?? order.find(room);
+        groups[g].push(id);
+      });
+      shuffle(ids.filter((id) => !isSupport(id) && !isLeader(id)), rand).forEach((id) => {
+        groups[order.find(room)].push(id);
       });
 
-      const costs = groups.map((g) => groupCost(g, history, isSupport));
+      const costs = groups.map((g) => groupCost(g, history, isSupport, isLeader));
       let improved = true;
       while (improved) {
         improved = false;
@@ -83,8 +93,8 @@
                 const x = groups[a][i];
                 const y = groups[b][j];
                 groups[a][i] = y; groups[b][j] = x;
-                const ca = groupCost(groups[a], history, isSupport);
-                const cb = groupCost(groups[b], history, isSupport);
+                const ca = groupCost(groups[a], history, isSupport, isLeader);
+                const cb = groupCost(groups[b], history, isSupport, isLeader);
                 if (ca + cb < costs[a] + costs[b]) {
                   costs[a] = ca; costs[b] = cb; improved = true;
                 } else {
@@ -103,17 +113,17 @@
     return shuffle(best, rand);
   }
 
-  // Seat order inside a group decides who is A (starts), B and C. Support
-  // students take the given seats first (default B, C, D, then A) so they
-  // hear a partner go first; everyone else gets a random seat.
+  // Seat order inside a group decides who is A (starts), B, C and D. Support
+  // students take the given seats first (default B, C, D, then A) so they hear
+  // a partner go first; leaders take the seat Support students want least (the
+  // one that goes first) so they set the pace; everyone else gets a random seat.
   function orderGroup(group, levels = {}, slots = [1, 2, 3, 0], rand = Math.random) {
     const out = [];
     const free = slots.filter((i) => i < group.length);
-    const rest = [];
-    shuffle(group, rand).forEach((id) => {
-      if (levels[id] === 'S' && free.length) out[free.shift()] = id;
-      else rest.push(id);
-    });
+    const shuffled = shuffle(group, rand);
+    shuffled.filter((id) => levels[id] === 'S').forEach((id) => { out[free.shift()] = id; });
+    shuffled.filter((id) => levels[id] === 'L').forEach((id) => { out[free.pop()] = id; });
+    const rest = shuffled.filter((id) => levels[id] !== 'S' && levels[id] !== 'L');
     for (let i = 0; i < group.length; i += 1) if (out[i] === undefined) out[i] = rest.shift();
     return out;
   }

@@ -54,7 +54,10 @@ const ssPairs = (groups, levels) => groups.reduce((n, grp) => {
   const k = grp.filter((id) => levels[id] === 'S').length;
   return n + (k * (k - 1)) / 2;
 }, 0);
-const mkLevels = (n, nS, nC = 0) => Object.fromEntries(ids(n).map((id, i) => [id, i < nS ? 'S' : (i < nS + nC ? 'C' : '')]));
+const mkLevels = (n, nS, nL = 0) => Object.fromEntries(ids(n).map((id, i) => [id, i < nS ? 'S' : (i < nS + nL ? 'L' : '')]));
+// Support students whose group has no leader
+const uncovered = (groups, levels) => groups.reduce((n, grp) => (
+  grp.some((id) => levels[id] === 'L') ? n : n + grp.filter((id) => levels[id] === 'S').length), 0);
 for (let trial = 0; trial < 50; trial += 1) {
   // 21 students -> 10 groups (one trio); 10 Support fit one per group
   const lv = mkLevels(21, 10, 4);
@@ -69,7 +72,7 @@ assert.strictEqual(ssPairs(L.makeGroups(ids(7), 2, {}, mkLevels(7, 5)), mkLevels
 
 // Support rule + partner rotation together: 20 students, 8 Support, 8 rounds
 history = {};
-const lv20 = mkLevels(20, 8, 4);
+const lv20 = mkLevels(20, 8);
 for (let r = 0; r < 8; r += 1) {
   const groups = L.makeGroups(ids(20), 2, history, lv20);
   assert.strictEqual(ssPairs(groups, lv20), 0, `Support pair in round ${r + 1}`);
@@ -77,24 +80,56 @@ for (let r = 0; r < 8; r += 1) {
   L.recordGroups(history, groups);
 }
 
-// seat order: Support students take the preferred seats (default B, then C)
-const seatLv = { sup: 'S', sup2: 'S', mid: 'N', top: 'C' };
+// leaders: every Support student gets one when there are enough
 for (let trial = 0; trial < 30; trial += 1) {
-  assert.strictEqual(L.orderGroup(['sup', 'top'], seatLv)[1], 'sup', 'Support is B in a pair');
-  assert.strictEqual(L.orderGroup(['top', 'sup'], seatLv, [0, 2, 1])[0], 'sup', 'Support is A when asking first');
+  const lv = mkLevels(20, 6, 6); // 10 pairs: 6 Support, 6 leaders, 8 neutral
+  const grp = L.makeGroups(ids(20), 2, {}, lv);
+  assert.strictEqual(ssPairs(grp, lv), 0);
+  assert.strictEqual(uncovered(grp, lv), 0, 'each Support student paired with a leader');
+  const few = mkLevels(20, 6, 3); // only 3 leaders: 3 Support covered, still no Support pairs
+  const g2 = L.makeGroups(ids(20), 2, {}, few);
+  assert.strictEqual(ssPairs(g2, few), 0);
+  assert.strictEqual(uncovered(g2, few), 3, 'leaders all go to Support students');
+  const tri = mkLevels(15, 5, 5); // 5 trios: Support + leader + neutral in each
+  const g3 = L.makeGroups(ids(15), 3, {}, tri);
+  assert.ok(g3.every((g) => g.filter((id) => tri[id] === 'S').length === 1 && g.filter((id) => tri[id] === 'L').length === 1), 'one Support and one leader per trio');
+}
+// ...and keeps that every round while rotating who works with whom
+history = {};
+const lvRot = mkLevels(20, 5, 6);
+let repeats = 0;
+for (let r = 0; r < 8; r += 1) {
+  const groups = L.makeGroups(ids(20), 2, history, lvRot);
+  assert.strictEqual(ssPairs(groups, lvRot), 0, `Support pair in round ${r + 1}`);
+  assert.strictEqual(uncovered(groups, lvRot), 0, `Support without leader in round ${r + 1}`);
+  groups.forEach(([a, b]) => { if (history[L.pairKey(a, b)]) repeats += 1; });
+  if (r === 3) assert.strictEqual(repeats, 0, 'no repeated partners in the first 4 rounds');
+  L.recordGroups(history, groups);
+}
+// 5 Support x 8 rounds = 40 Support+leader pairs, but only 5 x 6 = 30 different ones: 10 repeats is the minimum
+assert.ok(repeats <= 12, `close to the fewest possible repeats (${repeats}, minimum 10)`);
+
+// seat order: Support students take the preferred seats (default B, then C);
+// leaders take the seat that goes first (A, or B when Support asks first)
+const seatLv = { sup: 'S', sup2: 'S', mid: 'N', top: 'L', x: 'N' };
+for (let trial = 0; trial < 30; trial += 1) {
+  assert.deepStrictEqual(L.orderGroup(['sup', 'top'], seatLv), ['top', 'sup'], 'leader A, Support B');
+  assert.deepStrictEqual(L.orderGroup(['top', 'sup'], seatLv, [0, 2, 3, 1]), ['sup', 'top'], 'Support asks first, leader answers first');
+  assert.deepStrictEqual(L.orderGroup(['mid', 'sup', 'top'], seatLv), ['top', 'sup', 'mid'], 'trio: leader A, Support B');
+  assert.strictEqual(L.orderGroup(['x', 'top', 'mid'], seatLv)[0], 'top', 'leader starts even without Support');
   const trio = L.orderGroup(['sup', 'mid', 'sup2'], seatLv);
   assert.strictEqual(trio[0], 'mid', 'two Support in a trio take B and C');
   assert.deepStrictEqual(trio.slice().sort(), ['mid', 'sup', 'sup2']);
   assert.deepStrictEqual(L.orderGroup(['sup', 'sup2'], seatLv).sort(), ['sup', 'sup2']);
 }
-// without Support students every seat still gets filled, in random order
+// without Support students or leaders every seat still gets filled, in random order
 const firsts = new Set();
 for (let trial = 0; trial < 40; trial += 1) {
-  const g3 = L.orderGroup(['mid', 'top', 'x'], seatLv);
-  assert.deepStrictEqual(g3.slice().sort(), ['mid', 'top', 'x']);
+  const g3 = L.orderGroup(['mid', 'x', 'y'], seatLv);
+  assert.deepStrictEqual(g3.slice().sort(), ['mid', 'x', 'y']);
   firsts.add(g3[0]);
 }
-assert.strictEqual(firsts.size, 3, 'A is random when nobody is Support');
+assert.strictEqual(firsts.size, 3, 'A is random when nobody is Support or leader');
 
 // reporter: fair rotation, never twice in a row
 const counts = {};
