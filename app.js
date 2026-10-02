@@ -312,10 +312,10 @@ function renderSetup() {
           <button class="btn ghost small" data-action="renameClass" title="Rename class">✏️</button>
           <button class="btn ghost small" data-action="deleteClass" title="Delete class">🗑️</button>
         </div>
-        <p class="legend">Tap a name: no mark → <b class="c-S">+</b> Support → <b class="c-L">⚡</b> Spark → Absent. Only you see these. Each Support student is paired with a Spark (fluent, talks with anyone, positive leader), never with another Support student.</p>
+        <p class="legend">Tap a name: no mark → <b class="c-S">+</b> Support → <b class="c-L">⚡</b> Spark → Absent. Only you see these. Support students are never paired together; each gets a Spark (fluent, talks with anyone, positive leader), and in pair rounds they work in a trio. Sparks get every other round off.</p>
         <div class="chips">${cls.students.map(studentChip).join('') || '<p class="empty">No students yet. Paste your list below 👇</p>'}</div>
         ${cls.students.length ? `<p class="stats"><b>${present.length}</b> present · <span class="c-S">${nS} support</span> · <span class="c-L">${nL} spark</span></p>
-          ${nS > nL ? `<p class="stats warn">⚠️ ${nS - nL} Support student${nS - nL === 1 ? '' : 's'} will work without a Spark: mark ${nS - nL} more ⚡ to cover everyone.</p>` : ''}` : ''}
+          ${nL < 2 * nS ? `<p class="stats warn">⚠️ Sparks take every other round off: mark ${2 * nS - nL} more ⚡ (${2 * nS} in all) so every Support student always has one.</p>` : ''}` : ''}
         <textarea id="namesInput" rows="3" placeholder="Paste names, one per line.&#10;Add * for Spark (Maria*), + for Support (Leo+)"></textarea>
         <div class="row wrap">
           <button class="btn" data-action="addNames">➕ Add names</button>
@@ -568,10 +568,12 @@ function openPreview() {
   // Sample groups that rotate like a real class, using a throwaway copy of the history.
   const history = clone(cls.history || {});
   const sizes = rounds.map((r, i) => sizeForRound(r, i));
+  let busy = [];
   const groups = rounds.map((r, i) => {
     const { supportSlots } = ROUND_TYPES[r.type] || ROUND_TYPES.topic;
-    const g = Logic.makeGroups(ids, sizes[i], history, levels).map((x) => Logic.orderGroup(x, levels, supportSlots));
+    const g = Logic.makeGroups(ids, sizes[i], history, levels, { busy }).map((x) => Logic.orderGroup(x, levels, supportSlots));
     Logic.recordGroups(history, g);
+    busy = Logic.onDuty(g, levels);
     return g;
   });
   preview = { rounds, sizes, groups, steps: previewSteps(rounds), pos: 0 };
@@ -719,7 +721,7 @@ function buildGroups() {
   const ids = presentIds();
   const levels = Object.fromEntries(ids.map((id) => [id, levelOf(id)]));
   const { supportSlots } = ROUND_TYPES[L.rounds[L.index].type] || ROUND_TYPES.topic;
-  L.groups = Logic.makeGroups(ids, L.groupSize, liveClass().history || {}, levels)
+  L.groups = Logic.makeGroups(ids, L.groupSize, liveClass().history || {}, levels, { busy: L.busy || [] })
     .map((g) => Logic.orderGroup(g, levels, supportSlots));
 }
 
@@ -727,6 +729,9 @@ function prepareRound() {
   const L = db.live;
   L.phase = 'groups';
   L.groupSize = sizeForRound(L.rounds[L.index], L.index);
+  // Sparks who were with a Support student last round get this round off.
+  const last = L.groups || [];
+  L.busy = Logic.onDuty(last, Object.fromEntries(last.flat().map((id) => [id, levelOf(id)])));
   L.swapped = false;
   L.pictureWaiting = false;
   L.reporter = null;

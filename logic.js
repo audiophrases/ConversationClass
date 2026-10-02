@@ -17,25 +17,43 @@
     return a < b ? `${a}|${b}` : `${b}|${a}`;
   }
 
-  // Group sizes for n students: pairs leave at most one trio; trios and fours
-  // shrink by one rather than leaving anyone alone.
-  function groupSizes(n, size) {
+  // Group sizes for n students. Trios and fours shrink by one rather than leaving
+  // anyone alone. Pairs: each of the `supports` Support students gets a trio
+  // (room for a leader and a neutral student) and everyone else a pair, with an
+  // extra trio when the count is odd, but never so many trios that there are
+  // fewer groups than Support students, or fewer than `keepFree` seats in groups
+  // without a Support student (for leaders taking a round off).
+  function groupSizes(n, size, supports = 0, keepFree = 0) {
     if (n <= 0) return [];
     if (n <= 3) return [n];
-    const count = size >= 3 ? Math.ceil(n / size) : Math.floor(n / 2);
+    if (size === 2) {
+      // t trios hold one Support student each; the other Support students sit in
+      // pairs, so groups without Support students have n - 2 * supports - t seats.
+      const cap = Math.min(Math.floor(n / 3), n - 2 * supports - keepFree);
+      let t = Math.max(0, Math.min(supports, cap));
+      if ((n - 3 * t) % 2) t += t === 0 || t + 1 <= cap ? 1 : -1;
+      return [...Array(t).fill(3), ...Array((n - 3 * t) / 2).fill(2)];
+    }
+    const count = Math.ceil(n / size);
     const sizes = Array(count).fill(Math.floor(n / count));
     for (let i = 0; i < n % count; i += 1) sizes[i] += 1;
     return sizes;
   }
 
-  // Cost of one group, in order of importance:
-  // 1. a huge penalty for every Support+Support pairing (only when unavoidable),
-  // 2. a big penalty for every Support student without a leader in the group,
-  // 3. repeated partners (history maps pairKey -> times together, squared so
+  // Cost of one group. Each level outweighs everything below it:
+  // 1. two Support students together (only when unavoidable),
+  // 2. a leader working with a Support student again right after doing so
+  //    last round (`isBusy`): leaders get a "normal" round in between,
+  // 3. a Support student without a leader in the group,
+  // 4. in pair rounds, a Support student in a pair instead of a trio,
+  // 5. repeated partners (history maps pairKey -> times together, squared so
   //    repeats of repeats hurt more).
-  const SUPPORT_PAIR_COST = 1e6;
+  const SUPPORT_PAIR_COST = 1e8;
+  const BUSY_LEADER_COST = 1e6;
   const NO_LEADER_COST = 1e4;
-  function groupCost(g, history, isSupport, isLeader) {
+  const NO_TRIO_COST = 100;
+  function groupCost(g, ctx) {
+    const { history, isSupport, isLeader, isBusy, pairRound } = ctx;
     let cost = 0;
     for (let i = 0; i < g.length; i += 1) {
       for (let j = i + 1; j < g.length; j += 1) {
@@ -44,45 +62,61 @@
         if (isSupport(g[i]) && isSupport(g[j])) cost += SUPPORT_PAIR_COST;
       }
     }
-    if (!g.some(isLeader)) cost += NO_LEADER_COST * g.filter(isSupport).length;
+    const supports = g.filter(isSupport).length;
+    if (supports) {
+      cost += BUSY_LEADER_COST * g.filter(isBusy).length;
+      if (!g.some(isLeader)) cost += NO_LEADER_COST * supports;
+      if (pairRound && g.length < 3) cost += NO_TRIO_COST * supports;
+    }
     return cost;
   }
 
-  // Random groups that keep Support students apart, give each of them a leader
-  // when there are enough, and avoid previous partners. Each try deals Support
-  // students out one per group (so they only double up when there are more of
-  // them than groups), then leaders to those groups first, then everyone else;
-  // then it swaps students between groups while that lowers the cost. Best try wins.
+  // Leaders who worked with a Support student in these groups.
+  function onDuty(groups, levels = {}) {
+    return groups.filter((g) => g.some((id) => levels[id] === 'S')).flat().filter((id) => levels[id] === 'L');
+  }
+
+  // Random groups following the groupCost priorities. Each try deals Support
+  // students out one per group (trios first, so they only double up when there
+  // are more of them than groups), then rested leaders to those groups and busy
+  // leaders elsewhere, then everyone else; then it swaps students between groups
+  // while that lowers the cost. Best try wins.
   // levels maps id -> 'S' (Support) | 'L' (leader: the teacher's ⚡ Spark) | anything else (neutral).
-  function makeGroups(ids, size, history = {}, levels = {}, tries = 40, rand = Math.random) {
-    const sizes = groupSizes(ids.length, size);
-    if (!sizes.length) return [];
+  // opts.busy: leaders on duty last round (see onDuty).
+  function makeGroups(ids, size, history = {}, levels = {}, opts = {}) {
+    const { busy = [], tries = 40, rand = Math.random } = opts;
     const isSupport = (id) => levels[id] === 'S';
     const isLeader = (id) => levels[id] === 'L';
+    const busySet = new Set(busy);
+    const isBusy = (id) => isLeader(id) && busySet.has(id);
+    const sizes = groupSizes(ids.length, size, ids.filter(isSupport).length, ids.filter(isBusy).length);
+    if (!sizes.length) return [];
+    const ctx = { history, isSupport, isLeader, isBusy, pairRound: size === 2 };
     let best = null;
     let bestScore = Infinity;
     for (let t = 0; t < tries; t += 1) {
       const groups = sizes.map(() => []);
       const room = (g) => groups[g].length < sizes[g];
       const has = (g, test) => groups[g].some(test);
-      const order = shuffle(sizes.map((_, i) => i), rand);
+      const order = shuffle(sizes.map((_, i) => i), rand).sort((a, b) => sizes[b] - sizes[a]);
       let k = 0;
       shuffle(ids.filter(isSupport), rand).forEach((id) => {
         while (!room(order[k % order.length])) k += 1;
         groups[order[k % order.length]].push(id);
         k += 1;
       });
-      shuffle(ids.filter(isLeader), rand).forEach((id) => {
-        const g = order.find((x) => room(x) && has(x, isSupport) && !has(x, isLeader))
-          ?? order.find((x) => room(x) && !has(x, isLeader))
-          ?? order.find(room);
-        groups[g].push(id);
+      const leaders = shuffle(ids.filter(isLeader), rand);
+      [...leaders.filter((id) => !isBusy(id)), ...leaders.filter(isBusy)].forEach((id) => {
+        const g = isBusy(id)
+          ? order.find((x) => room(x) && !has(x, isSupport) && !has(x, isLeader)) ?? order.find((x) => room(x) && !has(x, isSupport))
+          : order.find((x) => room(x) && has(x, isSupport) && !has(x, isLeader)) ?? order.find((x) => room(x) && !has(x, isLeader));
+        groups[g ?? order.find(room)].push(id);
       });
       shuffle(ids.filter((id) => !isSupport(id) && !isLeader(id)), rand).forEach((id) => {
         groups[order.find(room)].push(id);
       });
 
-      const costs = groups.map((g) => groupCost(g, history, isSupport, isLeader));
+      const costs = groups.map((g) => groupCost(g, ctx));
       let improved = true;
       while (improved) {
         improved = false;
@@ -93,8 +127,8 @@
                 const x = groups[a][i];
                 const y = groups[b][j];
                 groups[a][i] = y; groups[b][j] = x;
-                const ca = groupCost(groups[a], history, isSupport, isLeader);
-                const cb = groupCost(groups[b], history, isSupport, isLeader);
+                const ca = groupCost(groups[a], ctx);
+                const cb = groupCost(groups[b], ctx);
                 if (ca + cb < costs[a] + costs[b]) {
                   costs[a] = ca; costs[b] = cb; improved = true;
                 } else {
@@ -305,7 +339,7 @@
   }
 
   const api = {
-    TYPE_KEYS, shuffle, pairKey, groupSizes, makeGroups, orderGroup, recordGroups, pickReporter, parseGroup,
+    TYPE_KEYS, shuffle, pairKey, groupSizes, makeGroups, onDuty, orderGroup, recordGroups, pickReporter, parseGroup,
     buildAiPrompt, extractJson, normalizeRound, normalizeSession,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

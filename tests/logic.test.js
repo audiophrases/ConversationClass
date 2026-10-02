@@ -70,19 +70,52 @@ assert.strictEqual(ssPairs(L.makeGroups(ids(20), 2, {}, mkLevels(20, 12)), mkLev
 // 5 Support among 7 students (pair, pair, trio): best is SS, SS, S++ = 2 pairs
 assert.strictEqual(ssPairs(L.makeGroups(ids(7), 2, {}, mkLevels(7, 5)), mkLevels(7, 5)), 2);
 
-// Support rule + partner rotation together: 20 students, 8 Support, 8 rounds
+// pairs of students in these groups who have already worked together
+const repeatsIn = (groups, hist) => groups.reduce((n, g) => {
+  for (let i = 0; i < g.length; i += 1) for (let j = i + 1; j < g.length; j += 1) if (hist[L.pairKey(g[i], g[j])]) n += 1;
+  return n;
+}, 0);
+
+// Support rule + partner rotation together: 20 students, 8 Support. Pair rounds
+// put Support students in trios, so they meet more people and run out of new
+// partners after about 6 rounds.
 history = {};
 const lv20 = mkLevels(20, 8);
-for (let r = 0; r < 8; r += 1) {
+for (let r = 0; r < 6; r += 1) {
   const groups = L.makeGroups(ids(20), 2, history, lv20);
   assert.strictEqual(ssPairs(groups, lv20), 0, `Support pair in round ${r + 1}`);
-  groups.forEach(([a, b]) => assert.ok(!history[L.pairKey(a, b)], `repeat in round ${r + 1}`));
+  assert.strictEqual(repeatsIn(groups, history), 0, `repeat in round ${r + 1}`);
   L.recordGroups(history, groups);
+}
+
+// pair rounds: every Support student in a trio (with a leader and a neutral student), the rest in pairs
+const lv25 = mkLevels(25, 5, 5);
+for (let trial = 0; trial < 20; trial += 1) {
+  const grp = L.makeGroups(ids(25), 2, {}, lv25);
+  assert.deepStrictEqual(sizes(grp), [2, 2, 2, 2, 2, 3, 3, 3, 3, 3]);
+  grp.filter((g) => g.some((id) => lv25[id] === 'S')).forEach((g) => {
+    assert.deepStrictEqual(g.map((id) => lv25[id] || 'N').sort(), ['L', 'N', 'S'], 'Support + leader + neutral');
+  });
+}
+assert.deepStrictEqual(L.onDuty([['s0', 's5', 's12'], ['s6', 's10']], lv25), ['s5'], 'onDuty: leaders grouped with a Support student');
+// pair-round sizes: one trio per Support student, fewer when resting leaders need seats elsewhere
+const trioCount = (z) => z.filter((x) => x === 3).length;
+assert.strictEqual(trioCount(L.groupSizes(25, 2, 5)), 5);
+assert.strictEqual(trioCount(L.groupSizes(25, 2, 5, 5)), 5, '25 students: plenty of free seats anyway');
+assert.strictEqual(trioCount(L.groupSizes(14, 2, 4)), 4);
+assert.strictEqual(trioCount(L.groupSizes(14, 2, 4, 3)), 2, '14 students: 2 trios + 4 pairs leaves 4 seats for 3 resting leaders');
+assert.strictEqual(trioCount(L.groupSizes(21, 2, 10)), 1, 'never fewer groups than Support students');
+for (let n = 4; n <= 32; n += 1) {
+  for (let s = 0; s <= 8; s += 1) {
+    const z = L.groupSizes(n, 2, s, 2);
+    assert.strictEqual(z.reduce((a, b) => a + b, 0), n, `n=${n} s=${s}`);
+    assert.ok(z.every((x) => x === 2 || x === 3), `n=${n} s=${s}: ${z}`);
+  }
 }
 
 // leaders: every Support student gets one when there are enough
 for (let trial = 0; trial < 30; trial += 1) {
-  const lv = mkLevels(20, 6, 6); // 10 pairs: 6 Support, 6 leaders, 8 neutral
+  const lv = mkLevels(20, 6, 6); // pair round: 6 Support trios + 1 pair
   const grp = L.makeGroups(ids(20), 2, {}, lv);
   assert.strictEqual(ssPairs(grp, lv), 0);
   assert.strictEqual(uncovered(grp, lv), 0, 'each Support student paired with a leader');
@@ -94,20 +127,39 @@ for (let trial = 0; trial < 30; trial += 1) {
   const g3 = L.makeGroups(ids(15), 3, {}, tri);
   assert.ok(g3.every((g) => g.filter((id) => tri[id] === 'S').length === 1 && g.filter((id) => tri[id] === 'L').length === 1), 'one Support and one leader per trio');
 }
-// ...and keeps that every round while rotating who works with whom
-history = {};
-const lvRot = mkLevels(20, 5, 6);
-let repeats = 0;
-for (let r = 0; r < 8; r += 1) {
-  const groups = L.makeGroups(ids(20), 2, history, lvRot);
-  assert.strictEqual(ssPairs(groups, lvRot), 0, `Support pair in round ${r + 1}`);
-  assert.strictEqual(uncovered(groups, lvRot), 0, `Support without leader in round ${r + 1}`);
-  groups.forEach(([a, b]) => { if (history[L.pairKey(a, b)]) repeats += 1; });
-  if (r === 3) assert.strictEqual(repeats, 0, 'no repeated partners in the first 4 rounds');
-  L.recordGroups(history, groups);
+// rest: a leader who worked with a Support student last round gets this round off.
+// Priorities: Support apart > leader rest > Support has a leader > new partners.
+const lesson = (n, nS, nL, rounds, size = 2) => {
+  const lv = mkLevels(n, nS, nL);
+  const hist = {};
+  let busy = [];
+  return Array.from({ length: rounds }, () => {
+    const groups = L.makeGroups(ids(n), size, hist, lv, { busy });
+    const tired = groups.filter((g) => g.some((id) => lv[id] === 'S')).flat().filter((id) => busy.includes(id));
+    const round = { ss: ssPairs(groups, lv), tired: tired.length, uncovered: uncovered(groups, lv), repeats: repeatsIn(groups, hist) };
+    L.recordGroups(hist, groups);
+    busy = L.onDuty(groups, lv);
+    return round;
+  });
+};
+for (let trial = 0; trial < 5; trial += 1) {
+  // twice as many leaders as Support students: everyone covered every round, nobody on duty twice in a row
+  lesson(24, 4, 8, 8).forEach((r, i) => {
+    assert.strictEqual(r.ss, 0, `round ${i + 1}`);
+    assert.strictEqual(r.tired, 0, `leader on duty two rounds in a row (round ${i + 1})`);
+    assert.strictEqual(r.uncovered, 0, `Support without leader (round ${i + 1})`);
+  });
+  // fewer leaders: rest still wins, so some Support students go without a leader on alternate rounds
+  const short = lesson(20, 5, 6, 8);
+  short.forEach((r, i) => {
+    assert.strictEqual(r.ss, 0, `round ${i + 1}`);
+    assert.strictEqual(r.tired, 0, `leader on duty two rounds in a row (round ${i + 1})`);
+  });
+  assert.strictEqual(short[0].uncovered, 0, 'first round: everyone covered');
+  assert.ok(short.some((r) => r.uncovered > 0), 'with too few leaders, coverage gives way to rest');
+  // trio rounds follow the same rules
+  lesson(24, 4, 8, 6, 3).forEach((r, i) => assert.ok(!r.ss && !r.tired && !r.uncovered, `trio round ${i + 1}`));
 }
-// 5 Support x 8 rounds = 40 Support+leader pairs, but only 5 x 6 = 30 different ones: 10 repeats is the minimum
-assert.ok(repeats <= 12, `close to the fewest possible repeats (${repeats}, minimum 10)`);
 
 // seat order: Support students take the preferred seats (default B, then C);
 // leaders take the seat that goes first (A, or B when Support asks first)
