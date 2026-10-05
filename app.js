@@ -365,12 +365,13 @@ function renderSetup() {
         ${roundsFolderErrors()}
         <div class="row wrap">
           <button class="btn primary soft" data-action="openAi">✨ Create with AI</button>
+          <button class="btn ghost small" data-action="newSession" title="Write a new set of rounds by hand">➕ New</button>
           <button class="btn ghost small" data-action="openImport">📥 Import</button>
           ${session ? `<button class="btn ghost small" data-action="openPreview" title="Step through every screen of this session">👁️ Preview</button>
           <button class="btn ghost small" data-action="openEditor">✏️ Edit</button>
           <button class="btn ghost small" data-action="exportSession" title="Download as .json (to upload to the GitHub rounds folder)">⬇️ Export</button>
           ${session.fromGitHub ? '' : '<button class="btn ghost small" data-action="deleteSession" title="Delete this session">🗑️</button>'}`
-            : '<button class="btn ghost small" data-action="openEditor">✏️ New</button>'}
+            : ''}
         </div>
         ${session ? `<ol class="round-list">${session.rounds.map(roundRow).join('')}</ol>` : ''}
       </section>
@@ -1254,7 +1255,12 @@ const actions = {
   importPaste() { importText($('#aiPaste').value); },
   openEditor() {
     const session = currentSession();
-    draft = session ? clone(session) : { id: uid(), title: '', level: '', rounds: [{ type: 'topic', title: '', support: '', challenge: '', words: [] }] };
+    if (!session) { actions.newSession(); return; }
+    draft = clone(session);
+    openModal(editorHtml(), 'wide editor');
+  },
+  newSession() {
+    draft = { id: uid(), title: '', level: '', rounds: [{ type: 'topic', title: '', support: '', challenge: '', words: [] }] };
     openModal(editorHtml(), 'wide editor');
   },
   exportSession() {
