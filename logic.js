@@ -188,7 +188,7 @@
   // ---------- AI prompt ----------
 
   const TYPE_DESCRIPTIONS = {
-    picture: 'picture: A describes a photo while B does not look and asks questions; at the swap a new photo appears. Must include "imageQuery".',
+    picture: 'picture: A describes a photo while B does not look and asks questions; at the swap they change places and a second, different photo appears. Must include "imageQuery" and "imageQuery2".',
     topic: 'topic: A asks, B answers. Write the tasks as questions A can read aloud to B.',
     roleplay: 'roleplay: a short situation with 2 roles (A plays the first role, B the second). Must include "roles" (exactly 2).',
     defend: 'defend: a mini-debate. A defends the first option, B the second (sides are given, not chosen). Must include "options" (exactly 2). Write the tasks as "defend your side", never "choose one".',
@@ -219,9 +219,10 @@
           title: 'At work',
           group: sizes[0],
           imageQuery: 'young woman working in laboratory',
-          support: 'Describe the picture. What is this person\'s job? What is she doing?',
+          imageQuery2: 'chef cooking in busy restaurant kitchen',
+          support: "Describe the picture. Who can you see? What is this person's job? What are they doing?",
           challenge: 'Would you like this job? What skills and studies do you need for it? Why?',
-          words: ['She is a...', 'She works in...', 'I would / wouldn\'t like...'],
+          words: ['This person is a...', 'They work in...', "I would / wouldn't like..."],
         },
         {
           type: 'defend',
@@ -258,6 +259,7 @@
       '- "title": 1–5 words.',
       ...groupRules(sizes),
       '- "imageQuery" (picture rounds only): 3–6 plain English words for a stock-photo search. Concrete and photographable: people, places, actions. No brands, no famous people, no text.',
+      '- "imageQuery2" (picture rounds only): the photo after the swap, searched the same way. Same theme, but clearly a different scene: different place, people and activity (e.g. a lab scientist, then a chef in a kitchen). Never the same subject again. The "support" and "challenge" questions must work for both photos.',
       '- Content must be appropriate and interesting for teenagers.',
       '',
       'Return ONLY valid JSON (no comments, no extra text) in exactly this format:',
@@ -313,6 +315,8 @@
     if (!round.challenge) round.challenge = round.support;
     if (type === 'picture') {
       round.imageQuery = str(r.imageQuery || r.image_query || r.query, 120) || round.title;
+      const second = str(r.imageQuery2 || r.image_query_2 || r.imageQueryB, 120);
+      if (second && second.toLowerCase() !== round.imageQuery.toLowerCase()) round.imageQuery2 = second;
       if (r.image && /^(https?:|data:image\/)/.test(r.image)) round.image = String(r.image);
     }
     if (type === 'roleplay') {

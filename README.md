@@ -82,6 +82,7 @@ Seat letters also carry the hidden level help: Support students get the seat tha
       "title": "At work",
       "group": 2,
       "imageQuery": "young woman working in laboratory",
+      "imageQuery2": "chef cooking in busy restaurant kitchen",
       "support": "Describe the picture. What is this person's job?",
       "challenge": "Would you like this job? What skills do you need? Why?",
       "words": ["She is a...", "She works in..."]
@@ -92,11 +93,11 @@ Seat letters also carry the hidden level help: Support students get the seat tha
 }
 ```
 
-Optional per round: `group` (2, 3 or 4; without it the round follows the default groups), `words` (phrases shown under Support), `imageQuery` (picture), `image` (a fixed URL), `roles` (roleplay: A plays the first, B the second), `options` (defend: A's side first, B's second). A bare array of rounds is also accepted.
+Optional per round: `group` (2, 3 or 4; without it the round follows the default groups), `words` (phrases shown under Support), `imageQuery` (picture), `imageQuery2` (picture after the swap), `image` (a fixed URL), `roles` (roleplay: A plays the first, B the second), `options` (defend: A's side first, B's second). A bare array of rounds is also accepted.
 
 ## Pictures
 
-Picture rounds get their picture from `imageQuery`, using the same sources as PinPlay: **Pexels** through the `pinplay-api` worker (`/api/images/search`), with **Openverse** as a fallback. Results are cached per query. In class, ↻ on the picture switches to another result, and broken links are skipped automatically. In the editor, **Choose picture** lets you search, upload a photo (resized and stored locally) or paste a URL.
+Picture rounds get their picture from `imageQuery`, and the picture after the swap from `imageQuery2`: same theme, a clearly different scene (the AI prompt asks for one; you can also type it in the editor). Lessons without `imageQuery2` show the next result of the first search instead. Pictures come from the same sources as PinPlay: **Pexels** through the `pinplay-api` worker (`/api/images/search`), with **Openverse** as a fallback. Results are cached per query. In class, ↻ on the picture switches to another result, and broken links are skipped automatically. In the editor, **Choose picture** lets you search, upload a photo (resized and stored locally) or paste a URL.
 
 ## Files
 

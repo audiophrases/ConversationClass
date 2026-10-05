@@ -148,22 +148,54 @@ function levelOf(id) {
 const LEVEL_NAMES = { S: 'Support', L: 'Spark (fluent, talks with anyone, positive leader)', N: 'No level' };
 const LEVEL_MARKS = { S: '+', L: '⚡', N: '' };
 
+// Picture rounds can have a second search (`imageQuery2`) for the picture after
+// the swap; `round.second` marks that it is showing. If that search found
+// nothing, the next result of the first search is used instead.
+function secondPictures(round) {
+  return round.imageQuery2 ? db.imageCache[round.imageQuery2] || [] : [];
+}
+
+function showingSecond(round) {
+  return !!round.second && secondPictures(round).length > 0;
+}
+
 function imageCandidates(round) {
+  if (showingSecond(round)) return secondPictures(round);
   const list = [round.image, ...(db.imageCache[round.imageQuery] || [])].filter(Boolean);
   return [...new Set(list)];
+}
+
+// Which index picks the picture from the list on screen (↻ and broken links move it).
+function imageIdxKey(round) {
+  return showingSecond(round) ? 'imageIdx2' : 'imageIdx';
 }
 
 function roundImage(round) {
   const list = imageCandidates(round);
   if (!list.length) return '';
-  return list[(round.imageIdx || 0) % list.length];
+  return list[(round[imageIdxKey(round)] || 0) % list.length];
+}
+
+function hasNextPicture(round) {
+  return secondPictures(round).length > 0 || imageCandidates(round).length > 1;
+}
+
+// Switch to the picture for after the swap.
+function advancePicture(round) {
+  if (!round.second && secondPictures(round).length) {
+    round.second = true;
+  } else {
+    const key = imageIdxKey(round);
+    round[key] = (round[key] || 0) + 1;
+  }
 }
 
 // Look up pictures for any picture round that has none yet (cached by query).
 async function ensureImages(rounds) {
   const queries = [...new Set(rounds
-    .filter((r) => r.type === 'picture' && !r.image && r.imageQuery && !db.imageCache[r.imageQuery])
-    .map((r) => r.imageQuery))];
+    .filter((r) => r.type === 'picture')
+    .flatMap((r) => [r.image ? '' : r.imageQuery, r.imageQuery2])
+    .filter((q) => q && !db.imageCache[q]))];
   if (!queries.length) return false;
   await Promise.all(queries.map(async (q) => {
     const items = await searchImages(q, 10);
@@ -607,7 +639,10 @@ function previewStage() {
   const i = step.index;
   const base = preview.rounds[i];
   const rounds = preview.rounds.slice();
-  if (step.nextPicture) rounds[i] = { ...base, imageIdx: (base.imageIdx || 0) + 1 };
+  if (step.nextPicture) {
+    rounds[i] = { ...base };
+    advancePicture(rounds[i]);
+  }
   const total = db.settings.minutes * 60000;
   const groups = preview.groups[i];
   const g = groups[(i * 3) % groups.length];
@@ -700,11 +735,12 @@ function showNudge(text) {
 function swapHalfway() {
   const L = db.live;
   const round = L.rounds[L.index];
-  const list = round.type === 'picture' ? imageCandidates(round) : [];
   L.swapped = true;
-  if (list.length > 1) {
+  if (round.type === 'picture' && hasNextPicture(round)) {
     L.pictureWaiting = true;
-    new Image().src = list[((round.imageIdx || 0) + 1) % list.length]; // preload
+    const next = { ...round };
+    advancePicture(next);
+    new Image().src = roundImage(next); // preload
   }
   save();
   render();
@@ -714,8 +750,7 @@ function swapHalfway() {
 function showNextPicture() {
   const L = db.live;
   if (!L.pictureWaiting) return;
-  const round = L.rounds[L.index];
-  round.imageIdx = (round.imageIdx || 0) + 1;
+  advancePicture(L.rounds[L.index]);
   L.pictureWaiting = false;
   save();
   render();
@@ -914,9 +949,12 @@ window.imageFailed = function imageFailed() {
     ? preview && preview.rounds[preview.steps[preview.pos].index]
     : db.live && db.live.rounds[db.live.index];
   if (!round) return;
+  // In preview the screen may show a copy (the "next picture" step); move the stored index.
+  const shown = view === 'preview' ? previewStage().rounds[preview.steps[preview.pos].index] : round;
+  const key = imageIdxKey(shown);
   round.failures = (round.failures || 0) + 1;
-  if (round.failures < imageCandidates(round).length) {
-    round.imageIdx = (round.imageIdx || 0) + 1;
+  if (round.failures < imageCandidates(shown).length) {
+    round[key] = (round[key] || 0) + 1;
     render();
   }
 };
@@ -1025,6 +1063,7 @@ function editorRound(r, i, n) {
       ${img ? `<img src="${esc(img)}" alt="">` : '<span class="thumb empty">🖼️</span>'}
       <div class="grow">
         <label class="field"><span>Image search words</span><input data-input="field" data-i="${i}" data-f="imageQuery" value="${esc(r.imageQuery)}"></label>
+        <label class="field"><span>Second picture, after the swap (same theme, a different scene)</span><input data-input="field" data-i="${i}" data-f="imageQuery2" value="${esc(r.imageQuery2 || '')}" placeholder="e.g. farmer selling vegetables at market"></label>
         <button class="btn ghost small" data-action="pickImage" data-i="${i}">🔍 Choose picture</button>
       </div></div>`;
   } else if (r.type === 'roleplay') {
@@ -1294,7 +1333,8 @@ const actions = {
   rerollImage() {
     const round = db.live.rounds[db.live.index];
     if (imageCandidates(round).length < 2) { toast('No other pictures for this round.'); return; }
-    round.imageIdx = (round.imageIdx || 0) + 1;
+    const key = imageIdxKey(round);
+    round[key] = (round[key] || 0) + 1;
     save(); render();
   },
   nextPicture() { showNextPicture(); },

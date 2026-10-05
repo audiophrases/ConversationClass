@@ -213,6 +213,13 @@ assert.strictEqual(s.rounds[2].type, 'topic');
 assert.throws(() => L.normalizeSession(L.extractJson('{"rounds":[]}')), /No valid rounds/);
 assert.throws(() => L.extractJson('no json here'), /No JSON/);
 
+// picture rounds: an optional second search for the picture after the swap
+const pic = (extra) => L.normalizeRound({ type: 'picture', support: 'x', imageQuery: 'chef in kitchen', ...extra });
+assert.strictEqual(pic({ imageQuery2: 'farmer at market' }).imageQuery2, 'farmer at market');
+assert.strictEqual(pic({ image_query_2: 'farmer at market' }).imageQuery2, 'farmer at market');
+assert.strictEqual(pic({ imageQuery2: 'Chef In Kitchen' }).imageQuery2, undefined, 'same words again are dropped');
+assert.strictEqual(pic({}).imageQuery2, undefined);
+
 // bare array is accepted too
 assert.strictEqual(L.normalizeSession([{ type: 'topic', title: 'a', support: 'b' }]).rounds.length, 1);
 
@@ -222,6 +229,8 @@ assert.ok(prompt.includes('THEME: Careers') && prompt.includes('exactly 6 speaki
 const example = L.normalizeSession(L.extractJson(prompt.slice(prompt.lastIndexOf('\n{'))));
 assert.strictEqual(example.rounds.length, 2);
 assert.deepStrictEqual(example.rounds.map((r) => r.group), [2, 3], 'default example uses pairs, then trios');
+assert.ok(example.rounds[0].imageQuery2 && example.rounds[0].imageQuery2 !== example.rounds[0].imageQuery, 'example picture round has a different second picture');
+assert.ok(prompt.includes('"imageQuery2"') && prompt.includes('clearly a different scene'), 'prompt asks for a different second picture');
 
 // group sizes in the prompt follow the teacher's choice
 const fours = L.buildAiPrompt({ theme: 'x', groups: [4] });
