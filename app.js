@@ -397,11 +397,30 @@ function groupStrip(groups) {
 
 // The A / B / C / D jobs for this round. A and B trade jobs at the halfway
 // swap; D does the same job as C.
+function ownJobs(round) {
+  return (round.type === 'roleplay' && round.roles) || (round.type === 'defend' && round.options) || [];
+}
+
+// After the swap, C (and D) join in where their job was mostly watching, unless
+// the round gives C a role or option of their own.
+function joinsAfterSwap(round) {
+  const t = ROUND_TYPES[round.type] || ROUND_TYPES.topic;
+  return t.joinAfterSwap && !ownJobs(round)[2] ? t.joinAfterSwap : null;
+}
+
+// The halfway message, mentioning C when some groups are trios or fours.
+function swapMessage(round, groups) {
+  const t = ROUND_TYPES[round.type] || ROUND_TYPES.topic;
+  return joinsAfterSwap(round) && groups.some((g) => g.length > 2) ? t.swapTrio : t.swap;
+}
+
 function roleChips(round, L) {
   const t = ROUND_TYPES[round.type] || ROUND_TYPES.topic;
-  const own = (round.type === 'roleplay' && round.roles) || (round.type === 'defend' && round.options) || [];
+  const own = ownJobs(round);
   const jobs = [...t.roles, t.roles[2]].map((job, i) => own[i] || job);
   if (L.swapped && t.swaps !== false) [jobs[0], jobs[1]] = [jobs[1], jobs[0]];
+  const join = L.swapped && joinsAfterSwap(round);
+  if (join) [jobs[2], jobs[3]] = join;
   const chip = (i) => `<span class="role">${seat(i)}${esc(jobs[i])}</span>`;
   const biggest = Math.max(...L.groups.map((g) => g.length));
   const extra = [2, 3].filter((i) => i < biggest).map(chip).join('');
@@ -599,7 +618,7 @@ function previewStage() {
       label: step.label,
       timer: step.phase in timers ? fmtTime(timers[step.phase]) : '',
       progress: step.swapped ? 50 : 0,
-      nudge: step.swapped && !step.nextPicture ? t.swap : '',
+      nudge: step.swapped && !step.nextPicture ? swapMessage(base, groups) : '',
     },
     rounds,
     index: i,
@@ -689,7 +708,7 @@ function swapHalfway() {
   }
   save();
   render();
-  showNudge((ROUND_TYPES[round.type] || ROUND_TYPES.topic).swap);
+  showNudge(swapMessage(round, L.groups));
 }
 
 function showNextPicture() {

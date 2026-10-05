@@ -51,14 +51,14 @@ In pair rounds each Support student works in a trio (Spark + neutral student + S
 
 ## Who speaks
 
-One rule for every round: **A starts, and the halfway chime means swap.** Partners share the topic but have different jobs, so nobody can just say "me too". The screen shows each job next to its letter and flips A and B at the swap. C keeps one job all round, and in a group of four D does the same job as C.
+One rule for every round: **A starts, and the halfway chime means swap.** Partners share the topic but have different jobs, so nobody can just say "me too". The screen shows each job next to its letter and flips A and B at the swap. C keeps one job all round (in a group of four D does the same job as C), except in role plays and debates: there C directs or judges in the first half and joins in after the swap.
 
 | Round | A | B | C, D (trios, fours) | Halfway |
 | --- | --- | --- | --- | --- |
 | `picture` 🖼️ | 👀 Describes it | 🙈 Doesn't look, asks questions | 🙈 Doesn't look either | Swap: picture 1 stays up so B can check it, students change places, then you tap **🖼️ Show next picture** |
 | `topic` 💬 | 🎤 Asks, and asks "Why?" | 💬 Answers | 💬 Answers too | Swap. No "me too"! |
-| `roleplay` 🎭 | First role | Second role | 🎬 Director: adds a problem | Swap roles, play it again |
-| `defend` ⚖️ (Debate) | Defends the first option | Defends the second | ⚖️ Judge: who wins? | Swap sides |
+| `roleplay` 🎭 | First role | Second role | 🎬 Director: adds a problem, then 🎭 joins in as a new character | Swap roles, play it again; C joins the scene |
+| `defend` ⚖️ (Debate) | Defends the first option | Defends the second | ⚖️ Judge: who wins?, then 🤝 joins B's side (D joins A's) | Swap sides; C joins B |
 | `problem` 🧩 | 💡 First idea | 💡 A different idea | 💡 Another idea | Agree on ONE idea |
 | `creative` ✨ | ✨ Starts | ➕ Adds more | ➕ Adds more | Swap, add a twist |
 

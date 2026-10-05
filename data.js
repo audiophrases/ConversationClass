@@ -5,7 +5,9 @@
 // projector (role plays and debates use the round's own roles / options for A
 // and B). A and B trade jobs at the swap; C keeps theirs, and in groups of four
 // D does the same job as C. `swaps: false` keeps the jobs and shows the halfway
-// message as the next step instead.
+// message as the next step instead. `joinAfterSwap`: where C's and D's job is
+// mostly watching, they join in after the swap ([C's new job, D's new job]),
+// announced by `swapTrio` when the round has trios or fours.
 // `supportSlots`: seats Support students take first (default B, C, D, then A).
 // `notebook`: the one-line note students write after the round.
 const ROUND_TYPES = {
@@ -29,6 +31,8 @@ const ROUND_TYPES = {
     name: 'Role play',
     roles: ['🎭 Start the scene', '🎭 Answer', '🎬 Director: add a problem!'],
     swap: '🔄 Swap roles! Play it again',
+    joinAfterSwap: ['🎭 Join in as a new character', '🎭 Join in as a new character'],
+    swapTrio: '🔄 Swap roles! C joins the scene',
     notebook: 'Write ONE useful phrase from your scene.',
   },
   defend: {
@@ -36,6 +40,8 @@ const ROUND_TYPES = {
     name: 'Debate',
     roles: ['👈 First option', '👉 Second option', '⚖️ Judge: who wins?'],
     swap: '🔄 Swap sides!',
+    joinAfterSwap: ["🤝 Join B's side", "🤝 Join A's side"], // C and D keep the teams even
+    swapTrio: '🔄 Swap sides! C joins B',
     notebook: 'Write your partner\'s best argument.',
   },
   problem: {
