@@ -447,6 +447,13 @@ function swapMessage(round, groups) {
   return joinsAfterSwap(round) && groups.some((g) => g.length > 2) ? t.swapTrio : t.swap;
 }
 
+// Picture rounds keep the last picture up through the notebook and report
+// screens, so the partner who couldn't look can check it before moving on.
+function keptPicture(round) {
+  const img = round.type === 'picture' ? roundImage(round) : '';
+  return img ? `<img class="kept-picture" src="${esc(img)}" alt="${esc(round.imageQuery || round.title)}">` : '';
+}
+
 function roleChips(round, L) {
   const t = ROUND_TYPES[round.type] || ROUND_TYPES.topic;
   const own = ownJobs(round);
@@ -536,6 +543,7 @@ function renderLive(L = db.live) {
         <div class="big-emoji">✏️</div>
         <div class="kicker">Notebook · one line!</div>
         <h1 class="mission">${esc(L.mission)}</h1>
+        ${keptPicture(round)}
       </div>`;
     footer = groupStrip(L.groups);
   } else if (L.phase === 'report') {
@@ -549,6 +557,7 @@ function renderLive(L = db.live) {
         <div class="reporter" id="reporterName">${esc(nameOf(L.reporter))}</div>
         ${partners.length ? `<p class="report-sub">Tell the class what ${listNames(partners)} said.</p>` : ''}
         ${L.mission ? `<p class="report-mission">📓 ${esc(L.mission)}</p>` : ''}
+        ${keptPicture(round)}
       </div>`;
   } else if (L.phase === 'end') {
     controls = '<button class="btn primary" data-action="finishLive">Back to setup</button>';
