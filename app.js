@@ -447,13 +447,6 @@ function swapMessage(round, groups) {
   return joinsAfterSwap(round) && groups.some((g) => g.length > 2) ? t.swapTrio : t.swap;
 }
 
-// Picture rounds keep the last picture up through the notebook and report
-// screens, so the partner who couldn't look can check it before moving on.
-function keptPicture(round) {
-  const img = round.type === 'picture' ? roundImage(round) : '';
-  return img ? `<img class="kept-picture" src="${esc(img)}" alt="${esc(round.imageQuery || round.title)}">` : '';
-}
-
 function roleChips(round, L) {
   const t = ROUND_TYPES[round.type] || ROUND_TYPES.topic;
   const own = ownJobs(round);
@@ -530,10 +523,11 @@ function renderLive(L = db.live) {
     timer = fmtTime(L.preview ? L.timer.remaining : timerRemaining());
     controls = `
       ${L.pictureWaiting ? '<button class="btn primary" data-action="nextPicture" title="N">🖼️ Show next picture</button>' : ''}
+      ${L.timeUp ? '<button class="btn primary" data-action="stopRound" title="Space">✏️ Notebook →</button>' : `
       <button class="btn ghost" data-action="addMinute" data-d="-1" title="−1 minute (−)">−1</button>
       <button class="btn ghost" data-action="addMinute" data-d="1" title="+1 minute (+)">+1</button>
       <button class="btn ghost" data-action="togglePause" title="Space">${paused ? '▶ Resume' : '⏸ Pause'}</button>
-      <button class="btn danger" data-action="stopRound" title="→">⏹ Stop round</button>`;
+      <button class="btn danger" data-action="stopRound" title="→">⏹ Stop round</button>`}`;
     main = talkMain(round, L);
     footer = groupStrip(L.groups);
   } else if (L.phase === 'note') {
@@ -543,7 +537,6 @@ function renderLive(L = db.live) {
         <div class="big-emoji">✏️</div>
         <div class="kicker">Notebook · one line!</div>
         <h1 class="mission">${esc(L.mission)}</h1>
-        ${keptPicture(round)}
       </div>`;
     footer = groupStrip(L.groups);
   } else if (L.phase === 'report') {
@@ -557,7 +550,6 @@ function renderLive(L = db.live) {
         <div class="reporter" id="reporterName">${esc(nameOf(L.reporter))}</div>
         ${partners.length ? `<p class="report-sub">Tell the class what ${listNames(partners)} said.</p>` : ''}
         ${L.mission ? `<p class="report-mission">📓 ${esc(L.mission)}</p>` : ''}
-        ${keptPicture(round)}
       </div>`;
   } else if (L.phase === 'end') {
     controls = '<button class="btn primary" data-action="finishLive">Back to setup</button>';
@@ -718,7 +710,7 @@ function tick() {
     }
     if (fill) fill.style.width = `${Math.min(100, 100 - (rem / L.timer.total) * 100)}%`;
     if (!L.swapped && L.timer.endAt && rem <= L.timer.total / 2) swapHalfway();
-    if (rem <= 0) timeUp();
+    if (rem <= 0 && !L.timeUp) timeUp();
   } else if (L.phase === 'note') {
     const rem = L.noteEnd - Date.now();
     if (timerEl) timerEl.textContent = fmtTime(rem);
@@ -798,6 +790,7 @@ function prepareRound() {
   L.busy = Logic.onDuty(last, Object.fromEntries(last.flat().map((id) => [id, levelOf(id)])));
   L.swapped = false;
   L.pictureWaiting = false;
+  L.timeUp = false;
   L.reporter = null;
   L.mission = '';
   L.timer = { total: db.settings.minutes * 60000, remaining: db.settings.minutes * 60000, endAt: null };
@@ -857,7 +850,18 @@ function timeUp() {
   if (L.phase !== 'talk') return;
   L.timer.remaining = 0;
   L.timer.endAt = null;
-  sfx.bell();
+  const round = L.rounds[L.index];
+  // Picture rounds: stop here with the picture still up, so the partner who
+  // couldn't look can check it. The teacher moves on to the notebook.
+  if (round.type === 'picture' && roundImage(round) && !L.timeUp) {
+    L.timeUp = true;
+    sfx.bell();
+    save();
+    render();
+    return;
+  }
+  if (!L.timeUp) sfx.bell();
+  L.timeUp = false;
   const secs = db.settings.noteSeconds;
   L.mission = (ROUND_TYPES[L.rounds[L.index].type] || ROUND_TYPES.topic).notebook;
   if (secs > 0) {
@@ -930,6 +934,7 @@ function nextRound() {
 function togglePause() {
   const L = db.live;
   if (L.phase !== 'talk') return;
+  if (L.timeUp) return timeUp();
   if (L.timer.endAt) {
     L.timer.remaining = timerRemaining();
     L.timer.endAt = null;
@@ -942,7 +947,7 @@ function togglePause() {
 
 function addMinute(d) {
   const L = db.live;
-  if (L.phase !== 'talk' && L.phase !== 'groups') return;
+  if ((L.phase !== 'talk' && L.phase !== 'groups') || L.timeUp) return;
   const rem = timerRemaining();
   const delta = d > 0 ? 60000 : -Math.min(60000, Math.max(0, rem - 10000));
   if (!delta) return;

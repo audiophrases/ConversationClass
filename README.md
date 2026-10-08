@@ -32,7 +32,7 @@ Each round runs through these steps:
 | Step | Screen | Teacher controls |
 | --- | --- | --- |
 | Groups | Numbered groups; each name has a seat letter **A** / **B** / **C** / **D** (no level marks) | 🔀 Shuffle, Pairs/Trios/Fours, ±1 min, ▶ Start |
-| Talk | Task title, what each seat does, picture, boxes **1 Support** and **2 Challenge**, big timer, groups strip; halfway a chime says **swap** | 🖼️ Show next picture (picture rounds, after the swap), −1 / +1 min, Pause, ⏹ Stop round |
+| Talk | Task title, what each seat does, picture, boxes **1 Support** and **2 Challenge**, big timer, groups strip; halfway a chime says **swap** | 🖼️ Show next picture (picture rounds, after the swap), −1 / +1 min, Pause, ⏹ Stop round (in picture rounds, when time runs out the last picture stays up and you tap **✏️ Notebook →** when everyone has checked it) |
 | Notebook | A one-line note that fits the round type (Picture: "Write ONE thing your partner described.", Debate: "Write your partner's best argument.", ...) with a short countdown | Done → |
 | Report back | Name roll picks one student (fair rotation, never the same person twice in a row) and names their partner | 🎲 Someone else, Next round → |
 
