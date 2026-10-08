@@ -450,7 +450,7 @@ function swapMessage(round, groups) {
 function roleChips(round, L) {
   const t = ROUND_TYPES[round.type] || ROUND_TYPES.topic;
   const own = ownJobs(round);
-  const jobs = [...t.roles, t.roles[2]].map((job, i) => own[i] || job);
+  const jobs = (t.roles[3] ? t.roles : [...t.roles, t.roles[2]]).map((job, i) => own[i] || job);
   if (L.swapped && t.swaps !== false) [jobs[0], jobs[1]] = [jobs[1], jobs[0]];
   const join = L.swapped && joinsAfterSwap(round);
   if (join) [jobs[2], jobs[3]] = join;

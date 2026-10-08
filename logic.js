@@ -202,8 +202,8 @@
     if (sizes.length === 1) return [`- "group": use ${sizes[0]} (${GROUP_WORDS[sizes[0]]}) for every round.`];
     return [
       `- "group": the group size for this round: ${sizes.map((n) => `${n} (${GROUP_WORDS[n]})`).join(', ')}. Choose what suits the task and vary it across the session:`,
-      '  pairs for interviews, describing and most role plays; trios when a third student can judge or direct (debates, role plays); fours for problem solving and planning.',
-      '  In trios and fours, students C and D answer too, judge the debate, direct the role play or add ideas.',
+      '  pairs for interviews, describing and most role plays; trios when a third student can direct (role plays) or join a side (debates); fours for problem solving and planning.',
+      '  In trios and fours, students C and D answer too, join a side of the debate, direct the role play or add ideas.',
     ];
   }
 

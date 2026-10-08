@@ -1,7 +1,7 @@
 // Static content: round types.
 
 // Every round works the same way: A (first name in the group) starts, and at
-// halfway a chime says "swap". `roles` are the A / B / C jobs shown on the
+// halfway a chime says "swap". `roles` are the A / B / C (and optionally D) jobs shown on the
 // projector (role plays and debates use the round's own roles / options for A
 // and B). A and B trade jobs at the swap; C keeps theirs, and in groups of four
 // D does the same job as C. `swaps: false` keeps the jobs and shows the halfway
@@ -38,10 +38,8 @@ const ROUND_TYPES = {
   defend: {
     icon: '⚖️',
     name: 'Debate',
-    roles: ['👈 First option', '👉 Second option', '⚖️ Judge: who wins?'],
+    roles: ['👈 First option', '👉 Second option', "🤝 Join B's side", "🤝 Join A's side"], // C and D keep the teams even
     swap: '🔄 Swap sides!',
-    joinAfterSwap: ["🤝 Join B's side", "🤝 Join A's side"], // C and D keep the teams even
-    swapTrio: '🔄 Swap sides! C joins B',
     notebook: 'Write your partner\'s best argument.',
   },
   problem: {
