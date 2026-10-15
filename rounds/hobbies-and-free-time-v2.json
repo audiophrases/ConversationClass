@@ -1,0 +1,88 @@
+{
+  "title": "Hobbies and Free Time v2",
+  "level": "A1-C1",
+  "rounds": [
+    {
+      "type": "topic",
+      "title": "Weekend and Beyond",
+      "support": "Ask and answer. What are you going to do this weekend? What is your favorite hobby?",
+      "challenge": "What new hobbies will you try in the future? What skills will you need for them?",
+      "words": [
+        "I am going to play football this weekend.",
+        "My favorite hobby is reading books.",
+        "I want to try cooking in the future."
+      ],
+      "group": 2
+    },
+    {
+      "type": "defend",
+      "title": "Solo vs Team",
+      "support": "Defend your side. Why is your hobby fun? Student C listens and chooses the winner.",
+      "challenge": "Compare the options. How do these hobbies change people? C, decide who gives the best arguments.",
+      "words": [
+        "Playing video games alone is relaxing.",
+        "Team sports are great because you make friends.",
+        "I think my hobby is better."
+      ],
+      "group": 3,
+      "options": [
+        "Solo hobbies (reading, gaming)",
+        "Team hobbies (sports, bands)"
+      ]
+    },
+    {
+      "type": "picture",
+      "title": "An Active Hobby",
+      "support": "Describe the picture to your partner. What are the people doing? Do you like this activity?",
+      "challenge": "Will people still do outdoor sports in 50 years? What are the advantages of indoor sports?",
+      "words": [
+        "They are climbing a tall wall indoors.",
+        "The boy is wearing a blue shirt.",
+        "I want to try this because it looks fun."
+      ],
+      "group": 2,
+      "imageQuery": "teenagers climbing indoor rock wall",
+      "imageQuery2": "blue tshirt playing rocket league"
+    },
+    {
+      "type": "problem",
+      "title": "The School Club",
+      "support": "You want to start a club, but you have no money. Suggest free hobbies and agree on one.",
+      "challenge": "How will you organize the club? What rules will you make to keep it free and fun?",
+      "words": [
+        "We can start a running club.",
+        "Let's make a book club in the library.",
+        "That is a great idea, let's do it."
+      ],
+      "group": 4
+    },
+    {
+      "type": "roleplay",
+      "title": "Quitting Time",
+      "support": "A, tell your parent (B) you want to stop playing the guitar. B, ask why.",
+      "challenge": "Negotiate. What other hobby will you do instead? How will it help your future?",
+      "words": [
+        "I am going to stop my guitar lessons.",
+        "Why do you want to quit?",
+        "I am too tired after school."
+      ],
+      "group": 2,
+      "roles": [
+        "Teenager quitting an instrument",
+        "Disappointed parent"
+      ]
+    },
+    {
+      "type": "creative",
+      "title": "Hobbies in 2060",
+      "support": "Invent a fun new hobby for the future. Take turns adding ideas. What do people do?",
+      "challenge": "Describe this futuristic hobby. What special technology will people need? Why will it be popular?",
+      "words": [
+        "People will play football on the moon.",
+        "They will use flying skateboards.",
+        "It will be a very fast game."
+      ],
+      "group": 2
+    }
+  ]
+}
