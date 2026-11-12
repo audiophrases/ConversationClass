@@ -1,0 +1,97 @@
+{
+  "title": "Holidays · Journeys and Belonging",
+  "level": "4º ESO",
+  "rounds": [
+    {
+      "type": "picture",
+      "title": "Setting Off",
+      "support": "A, describe the photo. B, look away and ask: Who is there? What are they doing? What are they taking?",
+      "challenge": "A, describe clues about the journey. B, look away and question possible reasons for travelling. Discuss what the photo cannot tell you.",
+      "words": [
+        "I can see...",
+        "They are taking...",
+        "Where are they going?",
+        "We cannot know..."
+      ],
+      "group": 2,
+      "imageQuery": "family boarding train with suitcases",
+      "imageQuery2": "teenagers packing backpacks in bedroom",
+      "image": "https://images.pexels.com/photos/32021505/pexels-photo-32021505.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "topic",
+      "title": "Visits and New Homes",
+      "support": "Where would you like to go on holiday? What would you take? Would you take different things when moving to a new home?",
+      "challenge": "How might packing for a holiday differ from packing for a permanent move? How could having little time or money affect your choices?",
+      "words": [
+        "I'd like to visit...",
+        "I'd take...",
+        "I'd need...",
+        "It depends on..."
+      ],
+      "group": 2
+    },
+    {
+      "type": "roleplay",
+      "title": "Holiday Club Welcome",
+      "support": "A, invite B to a holiday activity. B, ask about it. C, suggest an activity. Swap A and B halfway.",
+      "challenge": "Agree on an activity that feels welcoming. Discuss cost, language and unfamiliar rules. C, introduce a difficulty and help both roles find a solution.",
+      "words": [
+        "Would you like to...?",
+        "How much is it?",
+        "Could we...?",
+        "Let's try..."
+      ],
+      "group": 3,
+      "roles": [
+        "A holiday club member welcoming someone",
+        "A teenager who recently moved here"
+      ]
+    },
+    {
+      "type": "picture",
+      "title": "Time Together",
+      "support": "A, describe the photo. B, look away and ask: Where are they? What are they doing? How could someone new join?",
+      "challenge": "A, describe the scene. B, look away and ask questions. Discuss how this activity could build friendships and what might make joining difficult.",
+      "words": [
+        "They are...",
+        "Are they outside?",
+        "Someone new could...",
+        "Joining might be..."
+      ],
+      "group": 2,
+      "imageQuery": "children playing football in park",
+      "imageQuery2": "adults cooking together in community kitchen"
+    },
+    {
+      "type": "topic",
+      "title": "Finding Common Ground",
+      "support": "Ask B and C: What helps you feel at home? What could you share with someone new during the holidays? Swap A and B halfway.",
+      "challenge": "Ask B and C: What connects holiday travel and migration? Where does that comparison fail? How can shared experiences build empathy without assuming identical lives?",
+      "words": [
+        "I feel at home when...",
+        "We could share...",
+        "Both can involve...",
+        "One difference is..."
+      ],
+      "group": 3
+    },
+    {
+      "type": "roleplay",
+      "title": "A Fair Holiday Trip",
+      "support": "A, suggest a holiday outing. B, explain what you enjoy and can spend. Agree on a plan. Swap roles halfway.",
+      "challenge": "Negotiate an outing both classmates can enjoy. Discuss budget, transport and preferences without making assumptions. Justify your choices and agree on a fair compromise.",
+      "words": [
+        "I'd enjoy...",
+        "I can spend...",
+        "How about...?",
+        "That works because..."
+      ],
+      "group": 2,
+      "roles": [
+        "A student planning a holiday outing",
+        "A classmate who recently moved here"
+      ]
+    }
+  ]
+}
